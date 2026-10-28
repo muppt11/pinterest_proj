@@ -1,0 +1,38 @@
+/* MoodBoards design tokens: a warm, original palette (terracotta, ochre, sage on cream). */
+:root {
+  --mb-bg: #fffcf8;
+  --mb-surface: #ffffff;
+  --mb-surface-muted: #efe8df; /* pill buttons, search field, placeholder tiles */
+  --mb-ink: #2b2320;
+  --mb-ink-muted: #6b5d55; /* 5.9:1 on --mb-bg */
+  --mb-primary: #b4532a; /* terracotta, 4.9:1 with white text */
+  --mb-primary-hover: #973f1c;
+  --mb-accent: #d9a441; /* ochre */
+  --mb-sage: #7c8b6b;
+  --mb-focus: #1f5f8b;
+  --mb-border: #e3d6c6;
+
+  --mb-label-ai: #6a3fa0;
+  --mb-label-human: #2f6b3a;
+  --mb-label-unknown: #5f5750;
+
+  --mb-radius-card: 16px;
+  --mb-radius-pill: 999px;
+  --mb-shadow: 0 2px 10px rgb(43 35 32 / 0.08);
+  --mb-font: "Avenir Next", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --mb-gutter: 16px;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --mb-bg: #1d1815;
+    --mb-surface: #29221e;
+    --mb-surface-muted: #342b26;
+    --mb-ink: #f4ece3;
+    --mb-ink-muted: #c2b3a7;
+    --mb-primary: #d9764a;
+    --mb-primary-hover: #e88c62;
+    --mb-border: #44392f;
+    --mb-focus: #7fb8e0;
+  }
+}

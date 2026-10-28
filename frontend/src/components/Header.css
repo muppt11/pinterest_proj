@@ -1,0 +1,47 @@
+.mb-header {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px var(--mb-gutter);
+  background: var(--mb-bg);
+  border-bottom: 1px solid var(--mb-border);
+}
+
+.mb-brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--mb-ink);
+  text-decoration: none;
+  flex-shrink: 0;
+}
+
+.mb-wordmark {
+  font-weight: 700;
+  font-size: 1.15rem;
+  letter-spacing: -0.01em;
+}
+
+.mb-search {
+  flex: 1;
+  min-width: 0;
+}
+
+.mb-search input {
+  width: 100%;
+  padding: 10px 16px;
+  border: 1px solid var(--mb-border);
+  border-radius: var(--mb-radius-pill);
+  background: var(--mb-surface-muted);
+  color: var(--mb-ink);
+  font: inherit;
+}
+
+@media (max-width: 480px) {
+  .mb-wordmark {
+    display: none;
+  }
+}

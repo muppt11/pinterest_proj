@@ -1,0 +1,31 @@
+# Secrets
+.env
+
+# Data, indexes, databases (rebuilt by `make index`)
+data/*
+!data/.gitkeep
+*.faiss
+*.db
+*.sqlite
+
+# Hand-labeled images stay local (personal photos)
+evals/labels_handset/**/*
+!evals/labels_handset/README.md
+
+# Local design-reference screenshots (contain personal account info and third-party content)
+ui_inspo/
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+.pytest_cache/
+
+# Node
+node_modules/
+dist/
+
+# OS / editors
+.DS_Store
+.vscode/
+.idea/

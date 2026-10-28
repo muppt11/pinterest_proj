@@ -1,0 +1,96 @@
+.mb-tip-anchor {
+  position: relative;
+}
+
+.mb-tip,
+.mb-help-panel {
+  background: var(--mb-surface);
+  color: var(--mb-ink);
+  border: 1px solid var(--mb-border);
+  border-radius: var(--mb-radius-card);
+  box-shadow: 0 8px 28px rgb(43 35 32 / 0.18);
+  font-size: 0.9rem;
+}
+
+.mb-tip {
+  position: absolute;
+  top: calc(100% + 10px);
+  left: 0;
+  z-index: 20;
+  width: min(320px, calc(100vw - 2 * var(--mb-gutter)));
+  padding: 14px 16px;
+}
+
+.mb-tip p,
+.mb-help-panel p {
+  margin: 0 0 6px;
+}
+
+.mb-tip-title {
+  font-weight: 700;
+}
+
+.mb-tip-ok {
+  margin-top: 4px;
+  padding: 6px 14px;
+  border: 0;
+  border-radius: var(--mb-radius-pill);
+  background: var(--mb-primary);
+  color: #fff;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.mb-tip-ok:hover {
+  background: var(--mb-primary-hover);
+}
+
+.mb-help {
+  position: fixed;
+  right: var(--mb-gutter);
+  bottom: var(--mb-gutter);
+  z-index: 30;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 10px;
+}
+
+.mb-help-button {
+  width: 48px;
+  height: 48px;
+  border: 0;
+  border-radius: 50%;
+  background: var(--mb-surface);
+  color: var(--mb-ink);
+  box-shadow: var(--mb-shadow), 0 0 0 1px var(--mb-border);
+  font: inherit;
+  font-size: 1.3rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.mb-help-panel {
+  width: min(360px, calc(100vw - 2 * var(--mb-gutter)));
+  max-height: 60vh;
+  overflow-y: auto;
+  padding: 16px;
+}
+
+.mb-help-panel h2 {
+  margin: 0 0 10px;
+  font-size: 1.05rem;
+}
+
+.mb-help-panel ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.mb-help-panel li + li {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--mb-border);
+}

@@ -1,0 +1,29 @@
+@import "./tokens.css";
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--mb-bg);
+  color: var(--mb-ink);
+  font-family: var(--mb-font);
+  line-height: 1.5;
+}
+
+:focus-visible {
+  outline: 3px solid var(--mb-focus);
+  outline-offset: 2px;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
