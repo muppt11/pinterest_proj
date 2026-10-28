@@ -1,11 +1,20 @@
 """Image and text embeddings from Marqo-FashionCLIP (open_clip)."""
 
+from pathlib import Path
 from typing import Protocol
 
 import numpy as np
 from PIL import Image
 
-MODEL_NAME = "hf-hub:Marqo/marqo-fashionCLIP"
+HUB_MODEL = "hf-hub:Marqo/marqo-fashionCLIP"
+WEIGHTS_FILE = "open_clip_model.safetensors"
+
+
+def model_name(local_dir: Path | None) -> str:
+    """Prefer the verified local copy from scripts/download_model.sh; fall back to the Hugging Face Hub."""
+    if local_dir is not None and (local_dir / WEIGHTS_FILE).exists():
+        return f"local-dir:{local_dir}"
+    return HUB_MODEL
 
 
 class Embedder(Protocol):
@@ -27,16 +36,17 @@ def _normalize(vectors: np.ndarray) -> np.ndarray:
 class FashionClipEmbedder:
     """Loads Marqo-FashionCLIP once and embeds batches on Apple GPU (MPS) when available."""
 
-    def __init__(self) -> None:
+    def __init__(self, local_dir: Path | None = None) -> None:
         import open_clip
         import torch
 
         self._torch = torch
         self.device = "mps" if torch.backends.mps.is_available() else "cpu"
-        model, _, preprocess = open_clip.create_model_and_transforms(MODEL_NAME)
+        name = model_name(local_dir)
+        model, _, preprocess = open_clip.create_model_and_transforms(name)
         self.model = model.to(self.device).eval()
         self.preprocess = preprocess
-        self.tokenizer = open_clip.get_tokenizer(MODEL_NAME)
+        self.tokenizer = open_clip.get_tokenizer(name)
         self.dim = int(self.model.text_projection.shape[1])
 
     def embed_images(self, images: list[Image.Image]) -> np.ndarray:

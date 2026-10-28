@@ -29,6 +29,11 @@ class Settings(BaseSettings):
         return self.data_dir / "index"
 
     @property
+    def model_dir(self) -> Path:
+        """Local Marqo-FashionCLIP copy written by scripts/download_model.sh."""
+        return self.data_dir / "models" / "marqo-fashionCLIP"
+
+    @property
     def images_dir(self) -> Path:
         """Catalog images from the clothing-dataset download."""
         return self.data_dir / "raw" / "clothing-dataset" / "images"

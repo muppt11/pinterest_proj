@@ -23,6 +23,12 @@ export const FEATURE_TIPS: FeatureTipContent[] = [
     why: "Browsing from an item you already like is the quickest way to narrow down a look.",
   },
   {
+    id: "board",
+    title: "Analyze a board",
+    how: "Drop in 3–20 outfit photos you love. MoodBoards finds the distinct looks in them and matching items for each.",
+    why: "Most boards mix more than one style. Averaging them gives bland picks, so each look gets its own recommendations.",
+  },
+  {
     id: "theme",
     title: "Light or dark mode",
     how: "Use the moon / sun button in the top-right corner to switch. Your choice is remembered.",

@@ -4,13 +4,20 @@ import { ThemeToggle } from "./ThemeToggle";
 import "./Header.css";
 
 interface HeaderProps {
+  path: string;
+  onNavigate: (to: string) => void;
   onSearchText: (query: string) => void;
   onSearchImage: (file: File) => void;
   onHome: () => void;
 }
 
-/** Top bar: logo + wordmark, pill search field with photo search, and the theme toggle. */
-export function Header({ onSearchText, onSearchImage, onHome }: HeaderProps) {
+const NAV = [
+  { to: "/", label: "Discover" },
+  { to: "/board", label: "Analyze board" },
+];
+
+/** Top bar: logo + wordmark, nav tabs, pill search field with photo search, and the theme toggle. */
+export function Header({ path, onNavigate, onSearchText, onSearchImage, onHome }: HeaderProps) {
   const [query, setQuery] = useState("");
   const fileInput = useRef<HTMLInputElement>(null);
 
@@ -34,6 +41,28 @@ export function Header({ onSearchText, onSearchImage, onHome }: HeaderProps) {
         <img src="/logo.svg" alt="" width={32} height={32} />
         <span className="mb-wordmark">MoodBoards</span>
       </a>
+      <nav aria-label="Main" className="mb-nav">
+        {NAV.map(({ to, label }) => {
+          const active = to === "/" ? path === "/" : path.startsWith(to);
+          return (
+            <a
+              key={to}
+              href={to}
+              className={active ? "is-active" : undefined}
+              aria-current={active ? "page" : undefined}
+              onClick={(e) => {
+                e.preventDefault();
+                if (to === "/") {
+                  setQuery("");
+                  onHome();
+                } else onNavigate(to);
+              }}
+            >
+              {label}
+            </a>
+          );
+        })}
+      </nav>
       <form className="mb-search" role="search" onSubmit={submit}>
         <label htmlFor="mb-search-input" className="visually-hidden">
           Search outfits and items

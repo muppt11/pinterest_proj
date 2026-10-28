@@ -26,6 +26,20 @@ export interface SearchResults {
   results: ScoredItem[];
 }
 
+export interface Aesthetic {
+  index: number;
+  image_indices: number[];
+  style_tags: { word: string; score: number }[];
+  results: ScoredItem[];
+}
+
+export interface BoardAnalysis {
+  k: number;
+  silhouette: number | null;
+  silhouette_by_k: Record<string, number>;
+  aesthetics: Aesthetic[];
+}
+
 export class ApiError extends Error {
   constructor(
     public status: number,
@@ -63,5 +77,10 @@ export const api = {
     const body = new FormData();
     body.append("image", file);
     return request<SearchResults>(`/search/image?k=${k}`, { method: "POST", body });
+  },
+  analyzeBoard: (files: File[], k = 12) => {
+    const body = new FormData();
+    files.forEach((f) => body.append("images", f));
+    return request<BoardAnalysis>(`/board/analyze?k=${k}`, { method: "POST", body });
   },
 };

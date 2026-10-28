@@ -25,4 +25,4 @@ def get_catalog() -> Catalog:
 @lru_cache
 def get_embedder() -> Embedder:
     """The FashionCLIP model, loaded once on first use (takes a few seconds)."""
-    return FashionClipEmbedder()
+    return FashionClipEmbedder(get_settings().model_dir)

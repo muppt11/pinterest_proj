@@ -1,0 +1,131 @@
+.mb-board {
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.mb-dropzone {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 40px 16px;
+  border: 2px dashed var(--mb-border);
+  border-radius: var(--mb-radius-panel);
+  background: var(--mb-surface-accent);
+  text-align: center;
+  cursor: pointer;
+}
+
+.mb-dropzone.is-dragging,
+.mb-dropzone:hover {
+  border-color: var(--mb-ink-muted);
+}
+
+.mb-dropzone:focus-within {
+  box-shadow: 0 0 0 4px var(--mb-focus);
+}
+
+.mb-dropzone input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+}
+
+.mb-dropzone span {
+  color: var(--mb-ink-muted);
+  font-size: 0.9rem;
+}
+
+.mb-board-previews,
+.mb-aesthetic-members,
+.mb-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 16px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.mb-board-previews li {
+  position: relative;
+}
+
+.mb-board-previews img,
+.mb-aesthetic-members img {
+  display: block;
+  width: 72px;
+  height: 96px;
+  object-fit: cover;
+  border-radius: 12px;
+}
+
+.mb-board-previews button {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  width: 24px;
+  height: 24px;
+  border: 0;
+  border-radius: 50%;
+  background: var(--mb-selected);
+  color: var(--mb-bg);
+  cursor: pointer;
+}
+
+.mb-board-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 16px 0;
+  color: var(--mb-ink-muted);
+}
+
+.mb-button-primary {
+  padding: 12px 20px;
+  border: 0;
+  border-radius: var(--mb-radius-pill);
+  background: var(--mb-primary);
+  color: #fff;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.mb-button-primary:hover:not(:disabled) {
+  background: var(--mb-primary-hover);
+}
+
+.mb-button-primary:disabled {
+  background: var(--mb-surface-muted);
+  color: var(--mb-ink-muted);
+  cursor: not-allowed;
+}
+
+.mb-board-summary {
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+
+.mb-aesthetic {
+  margin: 24px 0 40px;
+}
+
+.mb-aesthetic header {
+  margin-bottom: 16px;
+}
+
+.mb-aesthetic h2 {
+  margin: 0;
+  font-size: 1.4rem;
+}
+
+.mb-tags li {
+  padding: 6px 12px;
+  border-radius: var(--mb-radius-pill);
+  background: var(--mb-surface-muted);
+  font-size: 0.9rem;
+  font-weight: 600;
+}

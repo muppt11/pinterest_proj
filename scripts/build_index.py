@@ -46,7 +46,7 @@ def main() -> None:
         sys.exit("Dataset not found. Run: python scripts/download_dataset.py")
 
     rows = load_rows(dataset_dir)[: args.limit]
-    embedder = FashionClipEmbedder()
+    embedder = FashionClipEmbedder(settings.model_dir)
     print(f"Embedding {len(rows)} images on {embedder.device} (dim={embedder.dim})")
 
     items: list[dict] = []

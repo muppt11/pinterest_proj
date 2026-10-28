@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { api, type Item } from "./api/client";
+import { BoardAnalyzer } from "./components/BoardAnalyzer";
 import { CloseUp } from "./components/CloseUp";
 import { Header } from "./components/Header";
 import { HelpMenu } from "./components/HelpMenu";
@@ -14,28 +15,34 @@ const PAGE_SIZE = 50;
 const SKELETON_RATIOS = [1.3, 1.5, 1.7, 1.25, 1.33, 1.4, 1.0, 1.6, 1.45, 1.2, 1.75, 1.3];
 
 /** Item id from a /item/<id> path, so close-ups survive reloads and the back button works. */
-const itemIdFromPath = () => decodeURIComponent(window.location.pathname.match(/^\/item\/(.+)$/)?.[1] ?? "") || null;
+const itemIdFromPath = (path: string) => decodeURIComponent(path.match(/^\/item\/(.+)$/)?.[1] ?? "") || null;
 
-/** Root layout: header, then either the item feed (browse or search results) or an item close-up. */
+/** Root layout: header, then the feed (browse or search results), an item close-up, or the board analyzer. */
 export default function App() {
   const [feed, setFeed] = useState<Feed>({ kind: "browse" });
   const [items, setItems] = useState<Item[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [openId, setOpenId] = useState<string | null>(itemIdFromPath);
+  const [path, setPath] = useState(window.location.pathname);
   const sentinel = useRef<HTMLDivElement>(null);
+  const openId = itemIdFromPath(path);
 
   useEffect(() => {
-    const onPop = () => setOpenId(itemIdFromPath());
+    const onPop = () => setPath(window.location.pathname);
     window.addEventListener("popstate", onPop);
     return () => window.removeEventListener("popstate", onPop);
   }, []);
 
-  const run = useCallback(async (next: Feed, load: () => Promise<{ items: Item[]; total: number }>) => {
+  const navigate = useCallback((to: string) => {
+    if (window.location.pathname !== to) window.history.pushState(null, "", to);
+    setPath(to);
+    window.scrollTo({ top: 0 });
+  }, []);
+
+  const run = useCallback(async (next: Feed, load: () => Promise<{ items: Item[]; total: number }>, goHome = true) => {
     setFeed(next);
-    setOpenId(null);
-    if (window.location.pathname !== "/") window.history.pushState(null, "", "/");
+    if (goHome) navigate("/");
     setItems([]);
     setLoading(true);
     setError(null);
@@ -48,15 +55,16 @@ export default function App() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [navigate]);
 
   const browse = useCallback(
-    () => run({ kind: "browse" }, () => api.listItems(0, PAGE_SIZE)),
+    (goHome = true) => run({ kind: "browse" }, () => api.listItems(0, PAGE_SIZE), goHome),
     [run],
   );
 
+  // Load the home feed once in the background, without leaving a deep-linked page.
   useEffect(() => {
-    browse();
+    browse(false);
   }, [browse]);
 
   const loadMore = useCallback(async () => {
@@ -83,18 +91,11 @@ export default function App() {
     return () => observer.disconnect();
   }, [loadMore]);
 
-  function open(item: Item) {
-    window.history.pushState(null, "", `/item/${encodeURIComponent(item.id)}`);
-    setOpenId(item.id);
-    window.scrollTo({ top: 0 });
-  }
+  const open = (item: Item) => navigate(`/item/${encodeURIComponent(item.id)}`);
 
   function back() {
     if (window.history.length > 1) window.history.back();
-    else {
-      window.history.pushState(null, "", "/");
-      setOpenId(null);
-    }
+    else navigate("/");
   }
 
   const searchText = (query: string) =>
@@ -114,10 +115,18 @@ export default function App() {
 
   return (
     <>
-      <Header onSearchText={searchText} onSearchImage={searchImage} onHome={browse} />
+      <Header
+        path={path}
+        onNavigate={navigate}
+        onSearchText={searchText}
+        onSearchImage={searchImage}
+        onHome={() => browse()}
+      />
       <main style={{ padding: "8px var(--mb-gutter) 96px" }}>
         {openId ? (
           <CloseUp itemId={openId} onBack={back} onOpen={open} />
+        ) : path === "/board" ? (
+          <BoardAnalyzer onOpen={open} />
         ) : (
           <>
             <PageTitle>{title}</PageTitle>
