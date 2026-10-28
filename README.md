@@ -56,9 +56,30 @@ _To be written._ The five differentiators:
 | 5 | AI labels, review queue, "Fewer AI images" toggle | planned |
 | 6 | Repost detection + original credit, "first seen" date on every item | planned |
 | 7 | Search by color (Lab k-means, Delta E 2000) | planned |
+| 7b | Mood picker: color wheel + aesthetic → curated items | planned |
 | 8 | Checklist save to multiple boards, nested sub-boards, undo toast | planned |
 | 9 | Group trip outfit planning (stretch) | planned |
 | 10 | Evals | planned |
+
+### Mood picker (7b)
+
+**What it does.** Pick a color on a color wheel, then pick an aesthetic (for example minimalist, streetwear, or coastal). The app returns a curated grid of items that match both.
+
+**Why it's here.** It's my own idea for when you know the *feeling* you want but not the words for it. Text search needs vocabulary like "sage linen co-ord", and browsing needs patience. Two taps on a wheel and a chip turn a vague mood into a concrete starting board. It also builds on the color-picker wish from the user thread in section 2.
+
+**How it works.**
+- Each item's dominant colors (feature 7) are scored against the picked color with Delta E 2000.
+- The aesthetic is scored with the CLIP text encoder ("a minimalist outfit"), using the same style vocabulary that names board aesthetics in feature 2.
+- The two scores are normalized and blended. A "color ↔ style" slider sets the weight, so you can lean toward one or the other.
+- Each result shows its color match and its style match, so the curation can be explained, not just trusted.
+
+**Alternatives considered.**
+- Searching for the color name as text ("red minimalist outfit"). Rejected: CLIP's sense of color words is fuzzy, and a picked hex value is precise.
+- A hard color filter. Rejected: it empties out results for unusual colors, whereas a blended ranking degrades gracefully.
+
+**How it's measured (feature 10).**
+- The mean Delta E of the top 20 results should be lower than for random items.
+- The style match of the top 20 should be higher than for a color-only ranking.
 
 Design rules decided up front:
 

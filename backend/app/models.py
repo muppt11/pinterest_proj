@@ -42,3 +42,26 @@ class ItemPage(BaseModel):
 class SearchResults(BaseModel):
     query: str | None = None
     results: list[ScoredItem]
+
+
+class StyleTag(BaseModel):
+    """A style word close to an aesthetic in CLIP space. A hint for humans, not a classification."""
+
+    word: str
+    score: float
+
+
+class Aesthetic(BaseModel):
+    """One distinct look within a board."""
+
+    index: int
+    image_indices: list[int]  # positions of the uploaded images in this aesthetic
+    style_tags: list[StyleTag]
+    results: list[ScoredItem]
+
+
+class BoardAnalysis(BaseModel):
+    k: int
+    silhouette: float | None  # None when the board is one aesthetic (k = 1)
+    silhouette_by_k: dict[int, float]  # every split that was tried, for transparency
+    aesthetics: list[Aesthetic]

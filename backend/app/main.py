@@ -6,7 +6,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 from app.config import get_settings
-from app.routers import search
+from app.routers import board, search
 
 
 class Health(BaseModel):
@@ -28,6 +28,7 @@ def create_app() -> FastAPI:
         allow_headers=["*"],
     )
     app.include_router(search.router)
+    app.include_router(board.router)
     # check_dir=False so the API still starts (and tests run) before the dataset is downloaded.
     app.mount("/images", StaticFiles(directory=settings.images_dir, check_dir=False), name="images")
 
