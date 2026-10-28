@@ -52,14 +52,14 @@ _To be written._ The five differentiators:
 | 1 | Indexing + image/text search | done |
 | 2 | Board analysis (k-means, k by silhouette score) | done |
 | 3 | Complete the look | done |
-| 4 | Assistant (LangGraph + Ollama) | planned |
+| 4 | Assistant (LangGraph + Ollama) | done (live run waits on model download) |
 | 5 | AI labels, review queue, "Fewer AI images" toggle | planned |
 | 6 | Repost detection + original credit, "first seen" date on every item | planned |
 | 7 | Search by color (Lab k-means, Delta E 2000) | planned |
 | 7b | Mood picker: color wheel + aesthetic → curated items | planned |
 | 7c | Shop similar: outbound Google Shopping / Lens links from an item's real attributes | planned |
 | 2b | Character style boards: written style profiles of iconic film/TV looks → catalog matches | planned |
-| 8 | Checklist save to multiple boards, nested sub-boards, undo toast | planned |
+| 8 | Checklist save to multiple boards, nested sub-boards, undo toast | done |
 | 8b | Style-focus filter (Menswear / Womenswear / All) chosen in a first-visit welcome popup; estimated by CLIP zero-shot, labeled "estimated", ambiguous items count as unisex | planned |
 | 9 | Group trip outfit planning (stretch) | planned |
 | 10 | Evals | planned |
@@ -150,6 +150,21 @@ _To be written._ The five differentiators:
 - Asking the model for JSON output. Rejected: small local models break JSON more often than they break a simple citation marker.
 
 **Measured by.** Feature 10's 15 test prompts check that tools were called, that every cited ID exists, and that no items were invented.
+
+### 8. Saving: multi-board checklist, nested sub-boards, undo toast
+
+**Problems.** Users asked to save one Pin to several boards at once, like a checklist they remember from before. They want boards inside boards. And they complained about pop-ups after saving or downloading (section 2).
+
+**Approach.**
+- **Hover Save** saves straight to your last-used board. The button reads "Save to Wedding" for screen readers.
+- **The board name ("Wedding ⌄")** opens a checklist popover listing every board and sub-board, indented by depth and pre-checked where the item is already saved. Ticking several boards saves to all of them in one request. Unticking removes the item. "Create board" works inline.
+- **Every save shows a toast** at the bottom with Undo for 5 seconds. Undo removes the item from exactly the boards *that* save added (the API returns `added_to`), so earlier saves are never touched.
+- **No modal dialogs anywhere in the flow.** The picker is a non-modal popover that Escape or a click outside closes.
+- **Boards nest to any depth** through a `parent_id` column. A recursive SQL query lists them in tree order, and board pages show breadcrumbs. Deleting a board cascades to its sub-boards and saves.
+
+**Alternatives considered.** Pinterest-style "sections" with one level only. Rejected, because the user wish was explicitly "infinite sub-boards." A self-referencing table is just as simple and has no depth limit.
+
+**Limits.** There's a single local user until feature 9 adds lightweight identity. Moving a board under a different parent isn't supported yet, which also means cycles can't happen.
 
 ### Mood picker (7b)
 

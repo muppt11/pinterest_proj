@@ -1,0 +1,27 @@
+.mb-toast {
+  position: fixed;
+  left: 50%;
+  bottom: 24px;
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  max-width: calc(100vw - 2 * var(--mb-gutter));
+  padding: 12px 12px 12px 20px;
+  border-radius: var(--mb-radius-pill);
+  background: var(--mb-selected);
+  color: var(--mb-bg);
+  font-weight: 600;
+  transform: translateX(-50%);
+  box-shadow: 0 6px 20px rgb(0 0 0 / 0.2);
+}
+
+.mb-toast button {
+  padding: 8px 16px;
+  border: 0;
+  border-radius: var(--mb-radius-pill);
+  background: var(--mb-bg);
+  color: var(--mb-ink);
+  font-weight: 700;
+  cursor: pointer;
+}

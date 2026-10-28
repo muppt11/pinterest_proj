@@ -1,0 +1,97 @@
+.mb-savemenu {
+  position: fixed;
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: min(320px, calc(100vw - 32px));
+  max-height: min(480px, calc(100vh - 32px));
+  padding: 16px;
+  border-radius: var(--mb-radius-card);
+  background: var(--mb-surface);
+  color: var(--mb-ink);
+  box-shadow: 0 8px 28px rgb(0 0 0 / 0.2);
+}
+
+.mb-savemenu-title {
+  margin: 0;
+  font-weight: 700;
+  text-align: center;
+}
+
+.mb-savemenu-empty {
+  margin: 0;
+  color: var(--mb-ink-muted);
+  font-size: 0.9rem;
+}
+
+.mb-savemenu-list {
+  flex: 1;
+  overflow-y: auto;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.mb-savemenu-list label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 8px;
+  border-radius: 12px;
+  cursor: pointer;
+}
+
+.mb-savemenu-list label:hover {
+  background: var(--mb-surface-muted);
+}
+
+.mb-savemenu-list input {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--mb-primary);
+}
+
+.mb-savemenu-list img,
+.mb-savemenu-blank {
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
+  border-radius: 8px;
+  object-fit: cover;
+  background: var(--mb-surface-accent);
+}
+
+.mb-savemenu-list span {
+  font-weight: 600;
+}
+
+.mb-savemenu-create {
+  display: flex;
+  gap: 8px;
+}
+
+.mb-savemenu-create input {
+  flex: 1;
+  min-width: 0;
+  padding: 10px 14px;
+  border: 1px solid var(--mb-border);
+  border-radius: var(--mb-radius-pill);
+  background: var(--mb-surface);
+  color: var(--mb-ink);
+  font: inherit;
+}
+
+.mb-savemenu-create button {
+  padding: 10px 14px;
+  border: 0;
+  border-radius: var(--mb-radius-pill);
+  background: var(--mb-surface-muted);
+  color: var(--mb-ink);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.mb-savemenu-apply {
+  width: 100%;
+}

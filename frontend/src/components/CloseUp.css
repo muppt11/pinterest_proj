@@ -62,7 +62,27 @@
 
 .mb-closeup-actions {
   display: flex;
+  align-items: center;
   justify-content: flex-end;
+  gap: 8px;
+}
+
+.mb-closeup-board {
+  max-width: 60%;
+  overflow: hidden;
+  padding: 12px 8px;
+  border: 0;
+  border-radius: var(--mb-radius-pill);
+  background: transparent;
+  color: var(--mb-ink);
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.mb-closeup-board:hover {
+  background: var(--mb-surface-muted);
 }
 
 .mb-closeup-save {

@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState } from "react";
+import { useContext, useEffect, useRef, useState } from "react";
+import { SavesContextOptional } from "../saves";
 import { altText, api, imageSrc, type BoardContext, type Item, type ScoredItem } from "../api/client";
 import { CompleteTheLook } from "./CompleteTheLook";
 import { FeatureTip } from "./FeatureTip";
@@ -21,6 +22,7 @@ export function CloseUp({ itemId, board, onBack, onOpen }: CloseUpProps) {
   const [similar, setSimilar] = useState<ScoredItem[]>([]);
   const [error, setError] = useState<string | null>(null);
   const backButton = useRef<HTMLButtonElement>(null);
+  const saves = useContext(SavesContextOptional);
 
   useEffect(() => {
     let cancelled = false;
@@ -56,9 +58,21 @@ export function CloseUp({ itemId, board, onBack, onOpen }: CloseUpProps) {
         </div>
         <div className="mb-closeup-body">
           <div className="mb-closeup-actions">
-            <button type="button" className="mb-closeup-save">
-              Save
-            </button>
+            {saves && (
+              <>
+                <button
+                  type="button"
+                  className="mb-closeup-board"
+                  aria-label="Choose boards"
+                  onClick={(e) => saves.openPicker(item, e.currentTarget)}
+                >
+                  {saves.lastBoard?.name ?? "Select board"} <span aria-hidden="true">⌄</span>
+                </button>
+                <button type="button" className="mb-closeup-save" onClick={(e) => saves.quickSave(item, e.currentTarget)}>
+                  Save
+                </button>
+              </>
+            )}
           </div>
           <h1 className="mb-closeup-title">{item.category}</h1>
           <dl className="mb-closeup-facts">

@@ -35,6 +35,12 @@ export const FEATURE_TIPS: FeatureTipContent[] = [
     why: "Most boards mix more than one style. Averaging them gives bland picks, so each look gets its own recommendations.",
   },
   {
+    id: "boards",
+    title: "Boards and saving",
+    how: "Hover any item and tap Save to add it to your last board, or tap the board name to tick several boards at once. Boards can hold sub-boards, as deep as you like. Every save shows Undo for 5 seconds.",
+    why: "People asked to save one Pin to several boards in one go and to nest boards inside boards, without pop-ups interrupting them.",
+  },
+  {
     id: "assistant",
     title: "Style assistant",
     how: "Tap Ask and chat: “what shoes would finish this look?” or “compare these two jackets”. It sees the item you have open and your analyzed board.",

@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { api, type BoardAnalysis, type BoardContext, type Item } from "./api/client";
 import { AssistantPanel } from "./components/AssistantPanel";
+import { BoardsPage } from "./components/BoardsPage";
+import { SavesProvider } from "./saves";
 import { BoardAnalyzer } from "./components/BoardAnalyzer";
 import { CloseUp } from "./components/CloseUp";
 import { Header } from "./components/Header";
@@ -19,6 +21,10 @@ const SKELETON_RATIOS = [1.3, 1.5, 1.7, 1.25, 1.33, 1.4, 1.0, 1.6, 1.45, 1.2, 1.
 
 /** Item id from a /item/<id> path, so close-ups survive reloads and the back button works. */
 const itemIdFromPath = (path: string) => decodeURIComponent(path.match(/^\/item\/(.+)$/)?.[1] ?? "") || null;
+const boardIdFromPath = (path: string) => {
+  const id = Number(path.match(/^\/boards\/(\d+)$/)?.[1]);
+  return Number.isInteger(id) && id > 0 ? id : null;
+};
 
 /** Root layout: header, then the feed (browse or search results), an item close-up, or the board analyzer. */
 export default function App() {
@@ -136,7 +142,7 @@ export default function App() {
     feed.kind === "text" ? `Results for “${feed.query}”` : feed.kind === "image" ? "Similar to your photo" : "Discover";
 
   return (
-    <>
+    <SavesProvider>
       <Header
         onAsk={() => setAssistantOpen(true)}
         path={path}
@@ -150,6 +156,8 @@ export default function App() {
           <CloseUp itemId={openId} board={board} onBack={back} onOpen={open} />
         ) : path === "/board" ? (
           <BoardAnalyzer onOpen={openFromBoard} onAnalyzed={setLastAnalysis} />
+        ) : path === "/boards" || path.startsWith("/boards/") ? (
+          <BoardsPage boardId={boardIdFromPath(path)} onNavigate={navigate} onOpen={openFromFeed} />
         ) : (
           <>
             <PageTitle>{title}</PageTitle>
@@ -211,6 +219,6 @@ export default function App() {
         }
       />
       <HelpMenu />
-    </>
+    </SavesProvider>
   );
 }

@@ -1,4 +1,6 @@
+import { useContext } from "react";
 import { altText, imageSrc, type Item } from "../api/client";
+import { SavesContextOptional } from "../saves";
 import { ItemCard } from "./ItemCard";
 import { MasonryGrid } from "./MasonryGrid";
 
@@ -11,6 +13,7 @@ interface ItemGridProps {
 
 /** Catalog items as masonry cards. Titles are the dataset's category; there are no product names. */
 export function ItemGrid({ items, label, onOpen, columnsFor }: ItemGridProps) {
+  const saves = useContext(SavesContextOptional);
   return (
     <MasonryGrid
       label={label}
@@ -26,7 +29,10 @@ export function ItemGrid({ items, label, onOpen, columnsFor }: ItemGridProps) {
               alt={altText(item)}
               title={item.category}
               aspectRatio={ratio}
+              boardLabel={saves?.lastBoard?.name}
               onOpen={() => onOpen(item)}
+              onSave={saves ? (anchor) => saves.quickSave(item, anchor) : undefined}
+              onSelectBoards={saves ? (anchor) => saves.openPicker(item, anchor) : undefined}
             />
           ),
         };

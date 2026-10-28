@@ -80,6 +80,43 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   return response.json() as Promise<T>;
 }
 
+export interface Board {
+  id: number;
+  name: string;
+  parent_id: number | null;
+  item_count: number;
+  cover: Item | null;
+}
+
+export interface BoardDetail extends Board {
+  breadcrumb: Board[];
+  children: Board[];
+  items: Item[];
+}
+
+export interface SaveResult {
+  item_id: string;
+  added_to: number[];
+  already_in: number[];
+}
+
+const json = (body: unknown): RequestInit => ({
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify(body),
+});
+
+export const boardsApi = {
+  list: () => request<Board[]>("/boards"),
+  get: (id: number) => request<BoardDetail>(`/boards/${id}`),
+  create: (name: string, parentId: number | null = null) => request<Board>("/boards", json({ name, parent_id: parentId })),
+  remove: (id: number) => fetch(`${BASE}/boards/${id}`, { method: "DELETE" }),
+  save: (itemId: string, boardIds: number[]) => request<SaveResult>("/saves", json({ item_id: itemId, board_ids: boardIds })),
+  unsave: (itemId: string, boardIds: number[]) =>
+    request<SaveResult>("/saves/remove", json({ item_id: itemId, board_ids: boardIds })),
+  savedIn: (itemId: string) => request<number[]>(`/items/${encodeURIComponent(itemId)}/saved-in`),
+};
+
 export interface ChatTurn {
   role: "user" | "assistant";
   content: string;

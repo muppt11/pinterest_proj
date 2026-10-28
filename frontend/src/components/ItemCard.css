@@ -47,10 +47,19 @@
 }
 
 .mb-card-board {
+  display: flex;
+  gap: 4px;
+  max-width: 55%;
   padding: 8px 4px;
   border: 0;
   background: transparent;
   color: #fff;
+}
+
+.mb-card-board-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .mb-card-save {

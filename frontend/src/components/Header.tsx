@@ -15,6 +15,7 @@ interface HeaderProps {
 const NAV = [
   { to: "/", label: "Discover" },
   { to: "/board", label: "Analyze board" },
+  { to: "/boards", label: "Boards" },
 ];
 
 /** Top bar: logo + wordmark, nav tabs, pill search field with photo search, and the theme toggle. */
@@ -44,7 +45,7 @@ export function Header({ onAsk, path, onNavigate, onSearchText, onSearchImage, o
       </a>
       <nav aria-label="Main" className="mb-nav">
         {NAV.map(({ to, label }) => {
-          const active = to === "/" ? path === "/" : path.startsWith(to);
+          const active = path === to || (to !== "/" && path.startsWith(`${to}/`));
           return (
             <a
               key={to}
