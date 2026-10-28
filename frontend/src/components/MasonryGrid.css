@@ -1,0 +1,13 @@
+.mb-masonry {
+  display: flex;
+  gap: var(--mb-grid-gap);
+  align-items: flex-start;
+}
+
+.mb-masonry-col {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--mb-grid-gap);
+}

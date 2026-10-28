@@ -1,0 +1,92 @@
+.mb-card-media {
+  position: relative;
+  overflow: hidden;
+  border-radius: var(--mb-radius-card);
+  background: var(--mb-surface-muted);
+}
+
+.mb-card-media img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* Full-card click target sits under the overlay buttons. */
+.mb-card-open {
+  position: absolute;
+  inset: 0;
+  border: 0;
+  background: transparent;
+  cursor: zoom-in;
+}
+
+.mb-card-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding: 12px;
+  background: var(--mb-overlay);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 120ms ease;
+}
+
+.mb-card-media:hover .mb-card-overlay,
+.mb-card-media:focus-within .mb-card-overlay {
+  opacity: 1;
+}
+
+.mb-card-overlay button {
+  pointer-events: auto;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.mb-card-board {
+  padding: 8px 4px;
+  border: 0;
+  background: transparent;
+  color: #fff;
+}
+
+.mb-card-save {
+  padding: 10px 16px;
+  border: 0;
+  border-radius: var(--mb-radius-pill);
+  background: var(--mb-primary);
+  color: #fff;
+}
+
+.mb-card-save:hover {
+  background: var(--mb-primary-hover);
+}
+
+.mb-card-badge {
+  position: absolute;
+  left: 10px;
+  bottom: 10px;
+}
+
+.mb-card-title {
+  margin: 8px 6px 0;
+  font-size: 0.9rem;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.mb-card-skeleton {
+  border-radius: var(--mb-radius-card);
+  background: var(--mb-surface-muted);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mb-card-overlay {
+    transition: none;
+  }
+}

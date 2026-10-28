@@ -1,38 +1,43 @@
-/* MoodBoards design tokens: a warm, original palette (terracotta, ochre, sage on cream). */
+/* MoodBoards design tokens: clean white canvas, warm neutrals, terracotta accent (original palette). */
 :root {
-  --mb-bg: #fffcf8;
+  --mb-bg: #ffffff;
   --mb-surface: #ffffff;
-  --mb-surface-muted: #efe8df; /* pill buttons, search field, placeholder tiles */
-  --mb-ink: #2b2320;
-  --mb-ink-muted: #6b5d55; /* 5.9:1 on --mb-bg */
+  --mb-surface-muted: #efece8; /* pill buttons, search field, skeleton tiles */
+  --mb-surface-hover: #e3dfd9;
+  --mb-ink: #1a1715;
+  --mb-ink-muted: #615a54; /* 6.6:1 on white */
   --mb-primary: #b4532a; /* terracotta, 4.9:1 with white text */
   --mb-primary-hover: #973f1c;
   --mb-accent: #d9a441; /* ochre */
   --mb-sage: #7c8b6b;
   --mb-focus: #1f5f8b;
-  --mb-border: #e3d6c6;
+  --mb-border: #dcd6cf;
+  --mb-overlay: rgb(0 0 0 / 0.32);
 
   --mb-label-ai: #6a3fa0;
   --mb-label-human: #2f6b3a;
   --mb-label-unknown: #5f5750;
 
   --mb-radius-card: 16px;
+  --mb-radius-panel: 32px;
   --mb-radius-pill: 999px;
-  --mb-shadow: 0 2px 10px rgb(43 35 32 / 0.08);
-  --mb-font: "Avenir Next", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --mb-shadow: 0 2px 10px rgb(0 0 0 / 0.1);
+  --mb-font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   --mb-gutter: 16px;
+  --mb-grid-gap: 16px;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --mb-bg: #1d1815;
-    --mb-surface: #29221e;
-    --mb-surface-muted: #342b26;
-    --mb-ink: #f4ece3;
-    --mb-ink-muted: #c2b3a7;
+    --mb-bg: #141210;
+    --mb-surface: #211e1b;
+    --mb-surface-muted: #2e2a26;
+    --mb-surface-hover: #3a3530;
+    --mb-ink: #f4efe9;
+    --mb-ink-muted: #bdb3a9;
     --mb-primary: #d9764a;
     --mb-primary-hover: #e88c62;
-    --mb-border: #44392f;
+    --mb-border: #3d3731;
     --mb-focus: #7fb8e0;
   }
 }
