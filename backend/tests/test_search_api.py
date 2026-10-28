@@ -41,6 +41,22 @@ def test_text_search_ranks_matching_items_first(client: TestClient) -> None:
     assert ids(response) == ["tshirt-red", "tshirt-pink"]
 
 
+def test_off_topic_query_is_flagged_low_relevance(client: TestClient) -> None:
+    # The fake embedder maps unknown words to an axis no catalog item points along (cosine 0).
+    response = client.get("/search/text", params={"q": "birthday cake"}).json()
+    assert response["low_relevance"] is True
+    assert len(response["results"]) == 4  # closest items still returned for "show anyway"
+
+
+def test_matching_query_is_not_flagged(client: TestClient, catalog) -> None:  # type: ignore[no-untyped-def]
+    from app.routers import search
+
+    # Mean of the 4 fixture scores for "shirt" is ~0.5, well above the cutoff.
+    response = client.get("/search/text", params={"q": "red shirt"}).json()
+    assert response["low_relevance"] is False
+    assert search.MIN_TEXT_RELEVANCE < 0.5
+
+
 def test_text_search_with_category_filter(client: TestClient) -> None:
     response = client.get("/search/text", params={"q": "boot", "category": "Pants"})
     assert ids(response) == ["pants-jeans"]

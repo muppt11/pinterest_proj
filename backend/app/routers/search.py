@@ -16,6 +16,12 @@ CatalogDep = Annotated[Catalog, Depends(get_catalog)]
 EmbedderDep = Annotated[Embedder, Depends(get_embedder)]
 K = Annotated[int, Query(ge=1, le=100)]
 
+# Text→image relevance cutoff on the mean cosine score of the top 10 results.
+# Measured on the real index (2026-10-28): 13 clothing queries scored 0.232–0.269,
+# 13 non-clothing/gibberish queries scored 0.069–0.211. 0.22 sits in the gap; feature 10 re-checks it.
+MIN_TEXT_RELEVANCE = 0.22
+RELEVANCE_WINDOW = 10
+
 
 def _scored(hits: list[Hit]) -> list[ScoredItem]:
     return [ScoredItem(**Item.from_meta(h.item).model_dump(), score=round(h.score, 4)) for h in hits]
@@ -72,7 +78,10 @@ def search_text(
         raise HTTPException(status_code=422, detail="Query can't be blank.")
     _check_category(catalog, category)
     vector = embedder.embed_texts([query])[0]
-    return SearchResults(query=query, results=_scored(catalog.search(vector, k=k, category=category)))
+    hits = catalog.search(vector, k=max(k, RELEVANCE_WINDOW), category=category)
+    window = hits[:RELEVANCE_WINDOW]
+    relevance = sum(h.score for h in window) / len(window) if window else 0.0
+    return SearchResults(query=query, results=_scored(hits[:k]), low_relevance=relevance < MIN_TEXT_RELEVANCE)
 
 
 @router.post("/search/image", response_model=SearchResults)

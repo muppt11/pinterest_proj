@@ -24,6 +24,8 @@ export interface ItemPage {
 export interface SearchResults {
   query: string | null;
   results: ScoredItem[];
+  /** True when even the best matches are weak (e.g. a non-clothing query). */
+  low_relevance?: boolean;
 }
 
 export interface Aesthetic {

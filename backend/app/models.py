@@ -42,6 +42,9 @@ class ItemPage(BaseModel):
 class SearchResults(BaseModel):
     query: str | None = None
     results: list[ScoredItem]
+    # True when even the best matches are weak, e.g. a non-clothing query against a clothing-only catalog.
+    # Results are still returned (closest items) so the UI can offer them behind an explanation.
+    low_relevance: bool = False
 
 
 class StyleTag(BaseModel):

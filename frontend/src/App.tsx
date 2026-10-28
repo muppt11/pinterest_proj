@@ -11,6 +11,8 @@ import { PageTitle } from "./components/PageTitle";
 
 type Feed = { kind: "browse" } | { kind: "text"; query: string } | { kind: "image"; fileName: string };
 
+type FeedPage = { items: Item[]; total: number; lowRelevance?: boolean };
+
 const PAGE_SIZE = 50;
 const SKELETON_RATIOS = [1.3, 1.5, 1.7, 1.25, 1.33, 1.4, 1.0, 1.6, 1.45, 1.2, 1.75, 1.3];
 
@@ -26,6 +28,9 @@ export default function App() {
   const [error, setError] = useState<string | null>(null);
   const [path, setPath] = useState(window.location.pathname);
   const [board, setBoard] = useState<BoardContext | null>(null);
+  // Weak text matches (e.g. "birthday cake" against a clothing catalog) are hidden behind an explanation.
+  const [lowRelevance, setLowRelevance] = useState(false);
+  const [showWeak, setShowWeak] = useState(false);
   const sentinel = useRef<HTMLDivElement>(null);
   const openId = itemIdFromPath(path);
 
@@ -41,16 +46,19 @@ export default function App() {
     window.scrollTo({ top: 0 });
   }, []);
 
-  const run = useCallback(async (next: Feed, load: () => Promise<{ items: Item[]; total: number }>, goHome = true) => {
+  const run = useCallback(async (next: Feed, load: () => Promise<FeedPage>, goHome = true) => {
     setFeed(next);
     if (goHome) navigate("/");
     setItems([]);
+    setLowRelevance(false);
+    setShowWeak(false);
     setLoading(true);
     setError(null);
     try {
       const page = await load();
       setItems(page.items);
       setTotal(page.total);
+      setLowRelevance(page.lowRelevance ?? false);
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -112,7 +120,7 @@ export default function App() {
   const searchText = (query: string) =>
     run({ kind: "text", query }, async () => {
       const r = await api.searchText(query);
-      return { items: r.results, total: r.results.length };
+      return { items: r.results, total: r.results.length, lowRelevance: r.low_relevance };
     });
 
   const searchImage = (file: File) =>
@@ -149,7 +157,17 @@ export default function App() {
             {!error && !loading && items.length === 0 && (
               <p className="mb-notice">No matches. Try different words or another photo.</p>
             )}
-            {items.length > 0 ? (
+            {lowRelevance && !showWeak && feed.kind === "text" ? (
+              <div className="mb-notice mb-weak" role="status">
+                <p>
+                  MoodBoards' catalog is clothing only, and nothing matched “{feed.query}” closely. Try describing
+                  an outfit, like “cozy oversized knit” or “white sneakers”.
+                </p>
+                <button type="button" onClick={() => setShowWeak(true)}>
+                  Show closest items anyway
+                </button>
+              </div>
+            ) : items.length > 0 ? (
               <ItemGrid items={items} label={title} onOpen={openFromFeed} />
             ) : (
               loading && (

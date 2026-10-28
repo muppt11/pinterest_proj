@@ -45,6 +45,20 @@ describe("App", () => {
     expect(calls.some((c) => c.startsWith("/api/search/text?q=red%20boots"))).toBe(true);
   });
 
+  it("explains weak matches for off-topic searches and can show them anyway", async () => {
+    mockFetch({
+      "/api/items?": { items: [], total: 0, offset: 0 },
+      "/api/search/text": { query: "birthday cake", results: [{ ...item("t", "T-Shirt"), score: 0.15 }], low_relevance: true },
+    });
+    render(<App />);
+    fireEvent.change(screen.getByRole("searchbox"), { target: { value: "birthday cake" } });
+    fireEvent.submit(screen.getByRole("search"));
+    expect(await screen.findByText(/catalog is clothing only/)).toBeInTheDocument();
+    expect(screen.queryByRole("img", { name: "Photo of t-shirt" })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Show closest items anyway" }));
+    expect(await screen.findByRole("img", { name: "Photo of t-shirt" })).toBeInTheDocument();
+  });
+
   it("shows a friendly error when the API is down", async () => {
     vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify({ detail: "Catalog index not built yet. Run `make index`." }), { status: 503 })));
     render(<App />);
