@@ -122,3 +122,44 @@ textarea {
   clip: rect(0 0 0 0);
   white-space: nowrap;
 }
+
+.mb-avatar {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
+  border: 0;
+  border-radius: 50%;
+  background: var(--mb-surface-muted);
+  color: var(--mb-ink);
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.mb-feed-toggle {
+  display: flex;
+  padding: 4px;
+  border-radius: var(--mb-radius-pill);
+  background: var(--mb-surface-muted);
+}
+
+.mb-feed-toggle button {
+  padding: 8px 14px;
+  border: 0;
+  border-radius: var(--mb-radius-pill);
+  background: transparent;
+  color: var(--mb-ink);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.mb-feed-toggle button[aria-checked="true"] {
+  background: var(--mb-selected);
+  color: var(--mb-bg);
+}
+
+.mb-yourstyle {
+  max-width: 760px;
+  margin: 0 auto;
+}

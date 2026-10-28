@@ -42,6 +42,47 @@ export interface CharacterBoard extends CharacterInfo {
   results: (ScoredItem & { matched_phrase: string })[];
 }
 
+export interface Prefs {
+  aesthetics: string[];
+  colors: string[];
+  eras: string[];
+  focus: "all" | "women" | "men";
+}
+
+export interface Me {
+  display_name: string;
+  prefs: Prefs;
+}
+
+export interface QuizOptions {
+  aesthetics: string[];
+  colors: Record<string, string[]>;
+  eras: string[];
+  focus: string[];
+  max_picks: number;
+}
+
+export interface ForYouItem extends Item {
+  score: number;
+  style_match: number | null;
+  color_match: number | null;
+}
+
+export const profileApi = {
+  me: async (): Promise<Me | null> => {
+    const r = await fetch(`${BASE}/me`);
+    if (r.status === 404) return null;
+    if (!r.ok) throw new ApiError(r.status, r.statusText);
+    return r.json();
+  },
+  signUp: (displayName: string) => request<Me>("/me", json({ display_name: displayName })),
+  savePrefs: (prefs: Prefs) =>
+    request<Me>("/me/prefs", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(prefs) }),
+  signOut: () => fetch(`${BASE}/me`, { method: "DELETE" }),
+  quiz: () => request<QuizOptions>("/quiz"),
+  forYou: (offset = 0, limit = 50) => request<{ personalized: boolean; items: ForYouItem[] }>(`/for-you?offset=${offset}&limit=${limit}`),
+};
+
 export interface ShopLinks {
   query: string;
   color_name: string | null;

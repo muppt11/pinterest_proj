@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { dismissTip, FEATURE_TIPS, getDismissedTips, INTRO, WELCOME_ID } from "../featureTips";
-import { FocusButtons } from "./FocusPicker";
 import "./FeatureTip.css";
 
 function Intro({ headingId }: { headingId: string }) {
@@ -21,7 +20,7 @@ function Intro({ headingId }: { headingId: string }) {
  * Floating "?" button. On first visit a small welcome card sits above it (non-blocking);
  * afterwards the same intro and every feature tip live in the help panel.
  */
-export function HelpMenu() {
+export function HelpMenu({ suppressWelcome = false }: { suppressWelcome?: boolean }) {
   const [open, setOpen] = useState(false);
   const [welcome, setWelcome] = useState(() => !getDismissedTips().has(WELCOME_ID));
 
@@ -32,11 +31,9 @@ export function HelpMenu() {
 
   return (
     <div className="mb-help">
-      {welcome && !open && (
+      {welcome && !open && !suppressWelcome && (
         <section className="mb-help-panel mb-welcome" aria-labelledby="welcome-heading">
           <Intro headingId="welcome-heading" />
-          <p className="mb-tip-title">What should we show you?</p>
-          <FocusButtons />
           <div className="mb-welcome-actions">
             <button type="button" className="mb-tip-ok" onClick={closeWelcome}>
               Got it

@@ -5,6 +5,7 @@ import { resetFocus, setFocus } from "../focus";
 
 beforeEach(() => {
   localStorage.clear();
+  localStorage.setItem("mb-onboarding-skipped", "1");
   resetFocus();
   window.history.pushState(null, "", "/");
 });
@@ -25,6 +26,7 @@ describe("style focus", () => {
       "fetch",
       vi.fn(async (url: string) => {
         calls.push(url);
+        if (url.startsWith("/api/me")) return new Response("{}", { status: 404 });
         return new Response(JSON.stringify(url.startsWith("/api/items") ? { items: [], total: 0, offset: 0 } : []));
       }),
     );

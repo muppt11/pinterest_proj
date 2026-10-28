@@ -6,6 +6,8 @@ import "./Header.css";
 
 interface HeaderProps {
   onAsk: () => void;
+  /** Signed-up display name, or null before sign-up. */
+  displayName: string | null;
   path: string;
   onNavigate: (to: string) => void;
   onSearchText: (query: string) => void;
@@ -24,7 +26,7 @@ const NAV = [
 ];
 
 /** Top bar: logo + wordmark, nav tabs, pill search field with photo search, and the theme toggle. */
-export function Header({ onAsk, path, onNavigate, onSearchText, onSearchImage, onSearchColor, onHome }: HeaderProps) {
+export function Header({ onAsk, displayName, path, onNavigate, onSearchText, onSearchImage, onSearchColor, onHome }: HeaderProps) {
   const [query, setQuery] = useState("");
   const [color, setColor] = useState<string | null>(null);
   const fileInput = useRef<HTMLInputElement>(null);
@@ -172,6 +174,15 @@ export function Header({ onAsk, path, onNavigate, onSearchText, onSearchImage, o
           Ask
         </button>
       </FeatureTip>
+      <button
+        type="button"
+        className={displayName ? "mb-avatar" : "mb-link-button"}
+        aria-label={displayName ? `Your style (${displayName})` : "Sign up"}
+        title={displayName ? "Your style" : "Sign up and take the style quiz"}
+        onClick={() => onNavigate(displayName ? "/me" : "/welcome")}
+      >
+        {displayName ? displayName[0].toUpperCase() : "Sign up"}
+      </button>
       <FeatureTip tipId="theme" align="end">
         <ThemeToggle />
       </FeatureTip>

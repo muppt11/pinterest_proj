@@ -1,0 +1,119 @@
+.mb-quiz {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  max-width: 720px;
+  margin: 24px auto;
+  padding: 32px 24px;
+  border-radius: var(--mb-radius-panel);
+  background: var(--mb-surface-accent);
+  text-align: center;
+}
+
+.mb-quiz.is-edit {
+  align-items: stretch;
+  text-align: left;
+}
+
+.mb-quiz h1 {
+  margin: 0;
+  font-size: 1.8rem;
+}
+
+.mb-quiz h2 {
+  margin: 8px 0;
+  font-size: 1.1rem;
+}
+
+.mb-quiz-progress {
+  margin: 0;
+  color: var(--mb-ink-muted);
+  font-weight: 600;
+}
+
+.mb-quiz-name input {
+  width: min(360px, 80vw);
+  padding: 14px 18px;
+  border: 1px solid var(--mb-border);
+  border-radius: var(--mb-radius-card);
+  background: var(--mb-surface);
+  color: var(--mb-ink);
+  font: inherit;
+  font-size: 1.1rem;
+}
+
+.mb-quiz-chips,
+.mb-quiz-colors {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+}
+
+.mb-quiz.is-edit .mb-quiz-chips,
+.mb-quiz.is-edit .mb-quiz-colors {
+  justify-content: flex-start;
+}
+
+.mb-quiz-chips button,
+.mb-quiz-colors button {
+  padding: 10px 16px;
+  border: 2px solid transparent;
+  border-radius: var(--mb-radius-pill);
+  background: var(--mb-surface-muted);
+  color: var(--mb-ink);
+  font-weight: 600;
+  text-transform: capitalize;
+  cursor: pointer;
+}
+
+.mb-quiz-chips button[aria-pressed="true"],
+.mb-quiz-chips button[aria-checked="true"],
+.mb-quiz-colors button[aria-pressed="true"] {
+  background: var(--mb-selected);
+  color: var(--mb-bg);
+}
+
+.mb-quiz-colors button {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  border-radius: var(--mb-radius-card);
+}
+
+.mb-quiz-swatches {
+  display: flex;
+}
+
+.mb-quiz-swatches span {
+  width: 22px;
+  height: 22px;
+  margin-left: -4px;
+  border: 2px solid var(--mb-surface);
+  border-radius: 50%;
+}
+
+.mb-quiz-hint {
+  flex-basis: 100%;
+  margin: 4px 0 0;
+  color: var(--mb-ink-muted);
+  font-size: 0.85rem;
+}
+
+.mb-quiz-nav {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.mb-quiz-skipall {
+  border: 0;
+  background: none;
+  color: var(--mb-ink-muted);
+  text-decoration: underline;
+  cursor: pointer;
+}

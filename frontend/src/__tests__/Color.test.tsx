@@ -21,6 +21,7 @@ function routes(map: Record<string, unknown>) {
 
 beforeEach(() => {
   localStorage.clear();
+  localStorage.setItem("mb-onboarding-skipped", "1");
   window.history.pushState(null, "", "/");
 });
 afterEach(() => {

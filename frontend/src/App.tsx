@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { api, type BoardAnalysis, type BoardContext, type Item } from "./api/client";
+import { api, profileApi, type BoardAnalysis, type BoardContext, type Item, type Me } from "./api/client";
 import { AssistantPanel } from "./components/AssistantPanel";
 import { BoardsPage } from "./components/BoardsPage";
 import { CharactersPage } from "./components/CharactersPage";
 import { MoodPage } from "./components/MoodPage";
-import { useFocus } from "./focus";
+import { setFocus, useFocus } from "./focus";
+import { onboardingSkipped, StyleQuiz } from "./components/StyleQuiz";
 import { SavesProvider } from "./saves";
 import { BoardAnalyzer } from "./components/BoardAnalyzer";
 import { CloseUp } from "./components/CloseUp";
@@ -48,6 +49,13 @@ export default function App() {
   const [assistantOpen, setAssistantOpen] = useState(false);
   const [lastAnalysis, setLastAnalysis] = useState<BoardAnalysis | null>(null);
   const focus = useFocus();
+  // Signed-up profile (null = not signed up). With quiz answers, Discover shows "For you" by default.
+  const [me, setMe] = useState<Me | null>(null);
+  const [everything, setEverything] = useState(false);
+  const hasPrefs = (me?.prefs?.aesthetics?.length ?? 0) + (me?.prefs?.colors?.length ?? 0) + (me?.prefs?.eras?.length ?? 0) > 0;
+  const personalized = hasPrefs && !everything;
+  const personalizedRef = useRef(personalized);
+  personalizedRef.current = personalized;
   // Re-runs whatever the feed last showed (browse or a search) when the style focus changes.
   const rerun = useRef<() => void>(() => {});
   const sentinel = useRef<HTMLDivElement>(null);
@@ -85,16 +93,43 @@ export default function App() {
     }
   }, [navigate]);
 
-  const browse = useCallback(
-    (goHome = true) => run({ kind: "browse" }, () => api.listItems(0, PAGE_SIZE), goHome),
-    [run],
-  );
+  const loadPage = useCallback(async (offset: number): Promise<FeedPage> => {
+    if (personalizedRef.current) {
+      const r = await profileApi.forYou(offset, PAGE_SIZE);
+      // The For you feed doesn't report a total; assume more while pages come back full.
+      return { items: r.items, total: offset + r.items.length + (r.items.length === PAGE_SIZE ? 1 : 0) };
+    }
+    return api.listItems(offset, PAGE_SIZE);
+  }, []);
+
+  const browse = useCallback((goHome = true) => run({ kind: "browse" }, () => loadPage(0), goHome), [run, loadPage]);
 
   // Load the home feed once in the background, without leaving a deep-linked page.
   useEffect(() => {
     browse(false);
     rerun.current = () => browse(false);
   }, [browse]);
+
+  useEffect(() => {
+    profileApi
+      .me()
+      .then((m) => {
+        setMe(m);
+        if (m) setFocus(m.prefs.focus);
+        else if (!onboardingSkipped() && window.location.pathname === "/") navigate("/welcome");
+      })
+      .catch(() => {});
+  }, [navigate]);
+
+  const firstPersonalized = useRef(true);
+  useEffect(() => {
+    if (firstPersonalized.current) {
+      firstPersonalized.current = false;
+      return;
+    }
+    if (window.location.pathname === "/" && feed.kind === "browse") browse(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [personalized]);
 
   const firstFocus = useRef(true);
   useEffect(() => {
@@ -110,14 +145,15 @@ export default function App() {
     if (feed.kind !== "browse" || loading || items.length >= total) return;
     setLoading(true);
     try {
-      const page = await api.listItems(items.length, PAGE_SIZE);
+      const page = await loadPage(items.length);
       setItems((prev) => [...prev, ...page.items]);
+      setTotal(page.total);
     } catch (e) {
       setError((e as Error).message);
     } finally {
       setLoading(false);
     }
-  }, [feed.kind, loading, items.length, total]);
+  }, [feed.kind, loading, items.length, total, loadPage]);
 
   // Infinite scroll on the browse feed; the "Load more" button is the keyboard/no-JS-observer fallback.
   useEffect(() => {
@@ -178,12 +214,15 @@ export default function App() {
         ? "Similar to your photo"
         : feed.kind === "color"
           ? `Color ${feed.hex}${feed.query ? ` + “${feed.query}”` : ""}`
-          : "Discover";
+          : personalized
+            ? `For you, ${me!.display_name}`
+            : "Discover";
 
   return (
     <SavesProvider>
       <Header
         onAsk={() => setAssistantOpen(true)}
+        displayName={me?.display_name ?? null}
         path={path}
         onNavigate={navigate}
         onSearchText={searchText}
@@ -199,6 +238,47 @@ export default function App() {
           <CloseUp itemId={openId} board={board} onBack={back} onOpen={open} />
         ) : path === "/characters" || path.startsWith("/characters/") ? (
           <CharactersPage characterId={path.match(/^\/characters\/([a-z0-9-]+)$/)?.[1] ?? null} onNavigate={navigate} onOpen={openFromFeed} />
+        ) : path === "/welcome" ? (
+          <StyleQuiz
+            mode="onboarding"
+            me={me}
+            onDone={(m) => {
+              setMe(m);
+              setEverything(false);
+              navigate("/");
+            }}
+          />
+        ) : path === "/me" ? (
+          <div className="mb-yourstyle">
+            <PageTitle
+              actions={
+                me && (
+                  <button
+                    type="button"
+                    className="mb-link-button"
+                    onClick={async () => {
+                      await profileApi.signOut();
+                      setMe(null);
+                      navigate("/");
+                    }}
+                  >
+                    Sign out
+                  </button>
+                )
+              }
+            >
+              Your style
+            </PageTitle>
+            <StyleQuiz
+              mode="edit"
+              me={me}
+              onDone={(m) => {
+                setMe(m);
+                setEverything(false);
+                navigate("/");
+              }}
+            />
+          </div>
         ) : path === "/mood" ? (
           <MoodPage onOpen={openFromFeed} />
         ) : path === "/board" ? (
@@ -207,7 +287,23 @@ export default function App() {
           <BoardsPage boardId={boardIdFromPath(path)} onNavigate={navigate} onOpen={openFromFeed} />
         ) : (
           <>
-            <PageTitle>{title}</PageTitle>
+            <PageTitle
+              actions={
+                feed.kind === "browse" &&
+                hasPrefs && (
+                  <div role="radiogroup" aria-label="Feed" className="mb-feed-toggle">
+                    <button type="button" role="radio" aria-checked={!everything} onClick={() => setEverything(false)}>
+                      For you
+                    </button>
+                    <button type="button" role="radio" aria-checked={everything} onClick={() => setEverything(true)}>
+                      Everything
+                    </button>
+                  </div>
+                )
+              }
+            >
+              {title}
+            </PageTitle>
             {error && (
               <p role="alert" className="mb-notice">
                 {error}
@@ -265,7 +361,7 @@ export default function App() {
             : null
         }
       />
-      <HelpMenu />
+      <HelpMenu suppressWelcome={path === "/welcome"} />
     </SavesProvider>
   );
 }

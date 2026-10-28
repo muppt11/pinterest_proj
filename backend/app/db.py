@@ -22,6 +22,15 @@ CREATE TABLE IF NOT EXISTS saves (
     PRIMARY KEY (board_id, item_id)
 );
 CREATE INDEX IF NOT EXISTS saves_item ON saves(item_id);
+
+-- Lightweight identity: no passwords. The cookie holds a random token; only its SHA-256 is stored.
+CREATE TABLE IF NOT EXISTS users (
+    id            INTEGER PRIMARY KEY,
+    token_sha256  TEXT NOT NULL UNIQUE,
+    display_name  TEXT NOT NULL,
+    prefs_json    TEXT NOT NULL DEFAULT '{}',
+    created_at    TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+);
 """
 
 
