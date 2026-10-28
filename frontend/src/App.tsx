@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { api, type BoardAnalysis, type BoardContext, type Item } from "./api/client";
 import { AssistantPanel } from "./components/AssistantPanel";
 import { BoardsPage } from "./components/BoardsPage";
+import { CharactersPage } from "./components/CharactersPage";
 import { MoodPage } from "./components/MoodPage";
 import { SavesProvider } from "./saves";
 import { BoardAnalyzer } from "./components/BoardAnalyzer";
@@ -172,6 +173,8 @@ export default function App() {
       <main style={{ padding: "8px var(--mb-gutter) 96px" }}>
         {openId ? (
           <CloseUp itemId={openId} board={board} onBack={back} onOpen={open} />
+        ) : path === "/characters" || path.startsWith("/characters/") ? (
+          <CharactersPage characterId={path.match(/^\/characters\/([a-z0-9-]+)$/)?.[1] ?? null} onNavigate={navigate} onOpen={openFromFeed} />
         ) : path === "/mood" ? (
           <MoodPage onOpen={openFromFeed} />
         ) : path === "/board" ? (

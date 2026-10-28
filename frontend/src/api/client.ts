@@ -28,6 +28,19 @@ export interface ColorResults {
   results: ColorMatchItem[];
 }
 
+export interface CharacterInfo {
+  id: string;
+  name: string;
+  source: string;
+  summary: string;
+  phrases: string[];
+}
+
+export interface CharacterBoard extends CharacterInfo {
+  disclaimer: string;
+  results: (ScoredItem & { matched_phrase: string })[];
+}
+
 export interface ShopLinks {
   query: string;
   color_name: string | null;
@@ -181,6 +194,8 @@ export const api = {
   searchColor: (hex: string, q?: string, k = 50) =>
     request<ColorResults>(`/search/color?hex=${encodeURIComponent(hex)}&k=${k}${q ? `&q=${encodeURIComponent(q)}` : ""}`),
   styles: () => request<string[]>("/styles"),
+  characters: () => request<CharacterInfo[]>("/characters"),
+  characterBoard: (id: string, k = 30) => request<CharacterBoard>(`/characters/${encodeURIComponent(id)}?k=${k}`),
   mood: (hex: string, style: string, colorWeight = 0.5, k = 40) =>
     request<ColorResults>(
       `/mood?hex=${encodeURIComponent(hex)}&style=${encodeURIComponent(style)}&color_weight=${colorWeight}&k=${k}`,

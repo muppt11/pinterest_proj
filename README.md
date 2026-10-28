@@ -58,7 +58,7 @@ _To be written._ The five differentiators:
 | 7 | Search by color (Lab k-means, Delta E 2000) | done |
 | 7b | Mood picker: color wheel + aesthetic → curated items | done |
 | 7c | Shop similar: outbound Google Shopping / Lens links from an item's real attributes | done |
-| 2b | Character style boards: written style profiles of iconic film/TV looks → catalog matches | planned |
+| 2b | Character style boards: written style profiles of iconic film/TV looks → catalog matches | done |
 | 8 | Checklist save to multiple boards, nested sub-boards, undo toast | done |
 | 8b | Style-focus filter (Menswear / Womenswear / All) chosen in a first-visit welcome popup; estimated by CLIP zero-shot, labeled "estimated", ambiguous items count as unisex | planned |
 | 9 | Group trip outfit planning (stretch) | planned |

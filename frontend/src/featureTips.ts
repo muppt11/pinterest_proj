@@ -29,6 +29,12 @@ export const FEATURE_TIPS: FeatureTipContent[] = [
     why: "For when you know the feeling you want but not the words for it. Two taps turn a mood into a starting board.",
   },
   {
+    id: "characters",
+    title: "Character style boards",
+    how: "Pick a film or TV character to get catalog pieces in their signature style. The chips show which parts of their look were matched.",
+    why: "Characters are some of the most-saved style inspiration, and “dress like Wednesday” is easier than describing the look.",
+  },
+  {
     id: "shop",
     title: "Shop similar",
     how: "On any item, tap Shop similar to search Google Shopping for that color and type of piece.",
@@ -80,6 +86,7 @@ export const INTRO = {
     "Search by color: tap the rainbow dot and pick an exact shade, optionally with words like “linen”",
     "Mood picker: a color wheel plus an aesthetic gives you a curated grid when you can't put a look into words",
     "Analyze board: finds the distinct aesthetics inside a mixed board instead of averaging them into one",
+    "Character style boards: dress like film and TV characters, matched to real catalog pieces",
     "Complete the look, tuned to your board: outfit pieces that match the item and your board's taste",
     "Save to several boards in one go, nest boards inside boards, and Undo any save, with no pop-ups",
     "Ask: a style assistant that can only show items it actually found, never made-up products",

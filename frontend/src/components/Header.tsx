@@ -17,6 +17,7 @@ interface HeaderProps {
 const NAV = [
   { to: "/", label: "Discover" },
   { to: "/mood", label: "Mood" },
+  { to: "/characters", label: "Characters" },
   { to: "/board", label: "Analyze board" },
   { to: "/boards", label: "Boards" },
 ];
