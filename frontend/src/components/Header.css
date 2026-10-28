@@ -54,9 +54,25 @@
   outline: none;
 }
 
+.mb-search-camera {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  margin-right: -8px;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--mb-ink);
+  cursor: pointer;
+}
+
+.mb-search-camera:hover {
+  background: var(--mb-surface-hover);
+}
+
 .mb-search-field:focus-within {
-  outline: 3px solid var(--mb-focus);
-  outline-offset: 2px;
+  box-shadow: 0 0 0 4px var(--mb-focus);
 }
 
 @media (max-width: 600px) {

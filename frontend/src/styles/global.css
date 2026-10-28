@@ -11,7 +11,16 @@ body {
   background: var(--mb-bg);
   color: var(--mb-ink);
   font-family: var(--mb-font);
-  line-height: 1.5;
+  font-size: 16px;
+  line-height: 1.4;
+  -webkit-font-smoothing: antialiased;
+}
+
+button,
+input,
+select,
+textarea {
+  font-family: inherit;
 }
 
 .mb-icon-button {
@@ -32,8 +41,29 @@ body {
 }
 
 :focus-visible {
-  outline: 3px solid var(--mb-focus);
-  outline-offset: 2px;
+  outline: none;
+  box-shadow: 0 0 0 4px var(--mb-focus);
+}
+
+.mb-notice {
+  text-align: center;
+  color: var(--mb-ink-muted);
+}
+
+.mb-load-more {
+  display: flex;
+  justify-content: center;
+  padding: 24px 0;
+}
+
+.mb-load-more button {
+  padding: 12px 20px;
+  border: 0;
+  border-radius: var(--mb-radius-pill);
+  background: var(--mb-surface-muted);
+  color: var(--mb-ink);
+  font-weight: 600;
+  cursor: pointer;
 }
 
 .visually-hidden {

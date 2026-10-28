@@ -7,6 +7,12 @@ dependencies = [
     "fastapi>=0.115,<0.116",
     "uvicorn[standard]>=0.32,<0.33",
     "pydantic-settings>=2.6,<3",
+    "torch>=2.5",
+    "open-clip-torch>=2.29",
+    "faiss-cpu>=1.9",
+    "numpy>=1.26,<3",
+    "pillow>=11",
+    "python-multipart>=0.0.12",
 ]
 
 [dependency-groups]

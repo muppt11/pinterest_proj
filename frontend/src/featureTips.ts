@@ -13,8 +13,14 @@ export const FEATURE_TIPS: FeatureTipContent[] = [
   {
     id: "search",
     title: "Search outfits",
-    how: "Type a description like \"sage green linen\" or drop in a photo to find similar items.",
+    how: "Type a description like \"sage green linen\", or tap the camera to search with a photo of an outfit.",
     why: "Describing a look in words or showing an example is faster than browsing categories.",
+  },
+  {
+    id: "more-like-this",
+    title: "More like this",
+    how: "Open any item to see the closest matches in the catalog. Tap one to keep exploring.",
+    why: "Browsing from an item you already like is the quickest way to narrow down a look.",
   },
   {
     id: "theme",

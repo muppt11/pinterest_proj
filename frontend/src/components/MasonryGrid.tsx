@@ -32,19 +32,26 @@ export function distribute(items: MasonryItem[], columnCount: number): MasonryIt
   return columns;
 }
 
-function useColumnCount(): number {
-  const [count, setCount] = useState(() => columnsForWidth(window.innerWidth));
+function useColumnCount(widthToColumns: (width: number) => number): number {
+  const [count, setCount] = useState(() => widthToColumns(window.innerWidth));
   useEffect(() => {
-    const onResize = () => setCount(columnsForWidth(window.innerWidth));
+    const onResize = () => setCount(widthToColumns(window.innerWidth));
     window.addEventListener("resize", onResize);
     return () => window.removeEventListener("resize", onResize);
-  }, []);
+  }, [widthToColumns]);
   return count;
 }
 
+interface MasonryGridProps {
+  items: MasonryItem[];
+  label: string;
+  /** Override the viewport-to-column mapping, e.g. for a narrower side grid. */
+  columnsFor?: (width: number) => number;
+}
+
 /** Responsive masonry layout of variable-height cards. */
-export function MasonryGrid({ items, label }: { items: MasonryItem[]; label: string }) {
-  const columns = distribute(items, useColumnCount());
+export function MasonryGrid({ items, label, columnsFor = columnsForWidth }: MasonryGridProps) {
+  const columns = distribute(items, useColumnCount(columnsFor));
   return (
     <div className="mb-masonry" role="list" aria-label={label}>
       {columns.map((column, i) => (

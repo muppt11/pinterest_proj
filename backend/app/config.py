@@ -23,6 +23,16 @@ class Settings(BaseSettings):
     agent_model: str = "qwen3:8b"
     vision_model: str = "qwen2.5vl:7b"
 
+    @property
+    def index_dir(self) -> Path:
+        """Where scripts/build_index.py writes the FAISS index and metadata."""
+        return self.data_dir / "index"
+
+    @property
+    def images_dir(self) -> Path:
+        """Catalog images from the clothing-dataset download."""
+        return self.data_dir / "raw" / "clothing-dataset" / "images"
+
 
 @lru_cache
 def get_settings() -> Settings:

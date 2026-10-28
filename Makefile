@@ -12,6 +12,7 @@ models: ## Pull the local Ollama models used by the assistant
 	ollama pull qwen2.5vl:7b
 
 index: ## Download the dataset and build embeddings, FAISS index, and metadata (feature 1)
+	python3 scripts/download_dataset.py
 	cd backend && uv run python ../scripts/build_index.py
 
 backend: ## Run the FastAPI dev server on :8000

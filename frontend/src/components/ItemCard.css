@@ -82,7 +82,7 @@
 
 .mb-card-skeleton {
   border-radius: var(--mb-radius-card);
-  background: var(--mb-surface-muted);
+  background: var(--mb-surface-accent);
 }
 
 @media (prefers-reduced-motion: reduce) {

@@ -68,7 +68,7 @@ Design rules decided up front:
 
 ### UI approach
 
-The layout follows conventions shared by visual-discovery apps: a masonry grid of rounded cards with titles underneath, a Save button on hover, a close-up view with the image on one side and actions and "More like this" on the other, and a settings-style side nav. The color scheme (white canvas, neutral grey pills, red accent) is deliberately familiar to visual-discovery users. The name, logo, and wordmark are original, and no third-party logos, fonts, or screenshots appear in the app.
+The layout follows conventions shared by visual-discovery apps: a masonry grid of rounded cards with titles underneath, a Save button on hover, a close-up view with the image on one side and actions and "More like this" on the other, and a settings-style side nav. Colors and corner rounding come from [Gestalt](https://github.com/pinterest/gestalt), Pinterest's open-source design system (Apache-2.0). That way the app feels native to the surface it's pitched for without copying anything proprietary. The name, logo, and wordmark are original. Pinterest's logo and its "Pin Sans" font are not used; the app uses the same system-font fallback stack instead. One accessibility change from Gestalt: its focus ring is semi-transparent, so the app uses a solid ring of the same blue that meets the 3:1 contrast guideline.
 
 **Light and dark mode.** Light is the default. The sun/moon button in the header switches modes, the choice is remembered, and a feature tip points it out.
 
