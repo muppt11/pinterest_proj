@@ -1,7 +1,8 @@
 """Build the catalog: FashionCLIP embeddings, a FAISS index, and metadata.json.
 
 Metadata holds only fields the dataset actually has (id, label, sender_id, kids)
-plus the image file name and pixel size, which the masonry grid needs for layout.
+plus values derived from each image: file name, pixel size (for masonry layout), and
+3–5 dominant colors in CIE Lab (for color search).
 
 Usage (from backend/): uv run python ../scripts/build_index.py [--limit N]
 """
@@ -20,6 +21,7 @@ sys.path.insert(0, str(REPO / "backend"))
 
 from app.config import get_settings  # noqa: E402
 from app.services.catalog import Catalog  # noqa: E402
+from app.services.color import dominant_colors  # noqa: E402
 from app.services.embedder import FashionClipEmbedder  # noqa: E402
 
 # Dataset labels that mean "not a usable clothing photo", per the dataset's own annotation scheme.
@@ -57,7 +59,8 @@ def main() -> None:
         images = []
         for row in batch_rows:
             with Image.open(dataset_dir / "images" / f"{row['image']}.jpg") as img:
-                images.append(img.convert("RGB"))
+                rgb = img.convert("RGB")
+                images.append(rgb)
                 items.append(
                     {
                         "id": row["image"],
@@ -67,6 +70,7 @@ def main() -> None:
                         "kids": row["kids"] == "True",
                         "width": img.width,
                         "height": img.height,
+                        "colors": dominant_colors(rgb),
                     }
                 )
         vectors.append(embedder.embed_images(images))

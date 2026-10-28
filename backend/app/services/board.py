@@ -52,11 +52,13 @@ def _normalize(x: np.ndarray) -> np.ndarray:
     return x / np.clip(np.linalg.norm(x, axis=-1, keepdims=True), 1e-12, None)
 
 
-def kmeans(x: np.ndarray, k: int, seed: int = 0, iterations: int = 50) -> tuple[np.ndarray, float]:
-    """k-means++ init + Lloyd iterations, best of RESTARTS by inertia. Returns (labels, inertia)."""
+def kmeans(
+    x: np.ndarray, k: int, seed: int = 0, iterations: int = 50, restarts: int = RESTARTS
+) -> tuple[np.ndarray, float]:
+    """k-means++ init + Lloyd iterations, best of `restarts` by inertia. Returns (labels, inertia)."""
     rng = np.random.default_rng(seed)
     best_labels, best_inertia = np.zeros(len(x), dtype=int), np.inf
-    for _ in range(RESTARTS):
+    for _ in range(restarts):
         centers = [x[rng.integers(len(x))]]
         for _ in range(1, k):
             d2 = np.min([((x - c) ** 2).sum(1) for c in centers], axis=0)
