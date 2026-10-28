@@ -75,14 +75,16 @@ export const FEATURE_TIPS: FeatureTipContent[] = [
 /** Short intro shown once on first visit and at the top of the help menu. */
 export const INTRO = {
   sentence:
-    "MoodBoards helps you discover outfits and build boards from a clothing catalog: search however you think, save what you love, and ask for ideas.",
+    "MoodBoards is a concept for what Pinterest could add for fashion. It works like the Pinterest you know, plus these new features:",
   bullets: [
-    "Search by words, by photo (camera), or by color (rainbow dot)",
-    "Open any item for More like this, Complete the look, and Shop similar",
-    "Save to several boards at once, nest boards inside boards, and Undo any save",
-    "Analyze board: drop in your outfit photos to find their distinct aesthetics",
-    "Mood picker: pick a color and an aesthetic for a curated grid",
-    "Ask: chat with a style assistant that only shows real catalog items",
+    "Search by color: tap the rainbow dot and pick an exact shade, optionally with words like “linen”",
+    "Mood picker: a color wheel plus an aesthetic gives you a curated grid when you can't put a look into words",
+    "Analyze board: finds the distinct aesthetics inside a mixed board instead of averaging them into one",
+    "Complete the look, tuned to your board: outfit pieces that match the item and your board's taste",
+    "Save to several boards in one go, nest boards inside boards, and Undo any save, with no pop-ups",
+    "Ask: a style assistant that can only show items it actually found, never made-up products",
+    "Shop similar: one tap from any item to shopping results for its exact color and type",
+    "Honest search: tells you when nothing truly matches instead of padding results",
   ],
 };
 
