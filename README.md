@@ -57,7 +57,7 @@ Design rules decided up front:
 
 ### UI approach
 
-The layout follows conventions shared by visual-discovery apps: a masonry grid of rounded cards with titles underneath, a Save button on hover, a close-up view with the image on one side and actions and "More like this" on the other, and a settings-style side nav. The palette (terracotta, ochre, sage on warm white), logo, and wordmark are original. No third-party logos, brand colors, or screenshots appear in the app.
+The layout follows conventions shared by visual-discovery apps: a masonry grid of rounded cards with titles underneath, a Save button on hover, a close-up view with the image on one side and actions and "More like this" on the other, and a settings-style side nav. The color scheme (white canvas, neutral grey pills, red accent) is deliberately familiar to visual-discovery users. The name, logo, and wordmark are original, and no third-party logos, fonts, or screenshots appear in the app.
 
 **In-app feature tips.** The first time a feature appears, a small popover explains how to use it and why it exists. It doesn't block the page: Escape or "Got it" dismisses it, and the floating "?" button lists every tip again. Tips never appear after saving or downloading. That avoids the kind of interruption users complained about (see section 2).
 

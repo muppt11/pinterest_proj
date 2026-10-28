@@ -1,22 +1,20 @@
-/* MoodBoards design tokens: clean white canvas, warm neutrals, terracotta accent (original palette). */
+/* MoodBoards design tokens: white canvas, neutral greys, red accent. */
 :root {
   --mb-bg: #ffffff;
   --mb-surface: #ffffff;
-  --mb-surface-muted: #efece8; /* pill buttons, search field, skeleton tiles */
-  --mb-surface-hover: #e3dfd9;
-  --mb-ink: #1a1715;
-  --mb-ink-muted: #615a54; /* 6.6:1 on white */
-  --mb-primary: #b4532a; /* terracotta, 4.9:1 with white text */
-  --mb-primary-hover: #973f1c;
-  --mb-accent: #d9a441; /* ochre */
-  --mb-sage: #7c8b6b;
-  --mb-focus: #1f5f8b;
-  --mb-border: #dcd6cf;
+  --mb-surface-muted: #e9e9e9; /* pill buttons, search field, skeleton tiles */
+  --mb-surface-hover: #dddddd;
+  --mb-ink: #111111;
+  --mb-ink-muted: #5f5f5f; /* 6.4:1 on white */
+  --mb-primary: #d7193a; /* red, 5.1:1 with white text */
+  --mb-primary-hover: #ad0f28;
+  --mb-focus: #0074e8;
+  --mb-border: #cdcdcd;
   --mb-overlay: rgb(0 0 0 / 0.32);
 
   --mb-label-ai: #6a3fa0;
   --mb-label-human: #2f6b3a;
-  --mb-label-unknown: #5f5750;
+  --mb-label-unknown: #5f5f5f;
 
   --mb-radius-card: 16px;
   --mb-radius-panel: 32px;
@@ -29,15 +27,13 @@
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --mb-bg: #141210;
-    --mb-surface: #211e1b;
-    --mb-surface-muted: #2e2a26;
-    --mb-surface-hover: #3a3530;
-    --mb-ink: #f4efe9;
-    --mb-ink-muted: #bdb3a9;
-    --mb-primary: #d9764a;
-    --mb-primary-hover: #e88c62;
-    --mb-border: #3d3731;
-    --mb-focus: #7fb8e0;
+    --mb-bg: #111111;
+    --mb-surface: #1f1f1f;
+    --mb-surface-muted: #2b2b2b;
+    --mb-surface-hover: #383838;
+    --mb-ink: #f2f2f2;
+    --mb-ink-muted: #b5b5b5;
+    --mb-border: #3a3a3a;
+    --mb-focus: #6ab0ff;
   }
 }
