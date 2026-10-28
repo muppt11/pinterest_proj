@@ -1,7 +1,0 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" role="img" aria-label="MoodBoards logo">
-  <!-- Three offset tiles: a tiny masonry board. -->
-  <rect x="3" y="3" width="11" height="15" rx="3.5" fill="#E60023"/>
-  <rect x="3" y="20" width="11" height="9" rx="3.5" fill="#767676"/>
-  <rect x="17" y="3" width="12" height="9" rx="3.5" fill="#767676"/>
-  <rect x="17" y="14" width="12" height="15" rx="3.5" fill="#E60023" opacity="0.6"/>
-</svg>

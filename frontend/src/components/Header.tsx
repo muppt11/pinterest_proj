@@ -38,7 +38,7 @@ export function Header({ path, onNavigate, onSearchText, onSearchImage, onHome }
           onHome();
         }}
       >
-        <img src="/logo.svg" alt="" width={32} height={32} />
+        <img src="/logo.webp" alt="" width={32} height={32} />
         <span className="mb-wordmark">MoodBoards</span>
       </a>
       <nav aria-label="Main" className="mb-nav">

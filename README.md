@@ -185,7 +185,12 @@ Design rules decided up front:
 
 ### UI approach
 
-The layout follows conventions shared by visual-discovery apps: a masonry grid of rounded cards with titles underneath, a Save button on hover, a close-up view with the image on one side and actions and "More like this" on the other, and a settings-style side nav. Colors and corner rounding come from [Gestalt](https://github.com/pinterest/gestalt), Pinterest's open-source design system (Apache-2.0). That way the app feels native to the surface it's pitched for without copying anything proprietary. The name, logo, and wordmark are original. Pinterest's logo and its "Pin Sans" font are not used; the app uses the same system-font fallback stack instead. One accessibility change from Gestalt: its focus ring is semi-transparent, so the app uses a solid ring of the same blue that meets the 3:1 contrast guideline.
+The UI is based on the Pinterest website, so each feature can be judged as it would look inside Pinterest:
+- a masonry grid of rounded cards with titles underneath and a Save button on hover
+- a Pin-style close-up with the image on one side and actions and "More like this" on the other
+- a settings-style side nav
+
+Colors and corner rounding come from [Gestalt](https://github.com/pinterest/gestalt), Pinterest's open-source design system (Apache-2.0). The header shows Pinterest's logo only to present the concept, and it implies no affiliation (see the disclaimer). The project name, MoodBoards, is my own. Pinterest's proprietary "Pin Sans" font is not used; the app uses the same system-font fallback stack instead. One accessibility change from Gestalt: its focus ring is semi-transparent, so the app uses a solid ring of the same blue that meets the 3:1 contrast guideline.
 
 **Light and dark mode.** Light is the default. The sun/moon button in the header switches modes, the choice is remembered, and a feature tip points it out.
 
@@ -265,4 +270,4 @@ _Feature-to-surface mapping: written once features are built._
 
 ## 13. Disclaimer
 
-This is a non-commercial concept project built as a portfolio sample. It is not affiliated with, endorsed by, or sponsored by Pinterest. "Pinterest" is a trademark of Pinterest, Inc. and is mentioned only to describe the problems this project explores. The UI is an original design inspired by visual-discovery apps in general.
+This is a non-commercial concept project built as a portfolio sample. It is not affiliated with, endorsed by, or sponsored by Pinterest. "Pinterest" and the Pinterest logo are trademarks of Pinterest, Inc. They appear only to describe the problems this project explores and to present the concept in context. The UI is based on the Pinterest website and uses colors and rounding values from Gestalt, Pinterest's open-source design system (Apache-2.0). The features and code are my own.
