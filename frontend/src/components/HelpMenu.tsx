@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { dismissTip, FEATURE_TIPS, getDismissedTips, INTRO, WELCOME_ID } from "../featureTips";
+import { FocusButtons } from "./FocusPicker";
 import "./FeatureTip.css";
 
 function Intro({ headingId }: { headingId: string }) {
@@ -34,6 +35,8 @@ export function HelpMenu() {
       {welcome && !open && (
         <section className="mb-help-panel mb-welcome" aria-labelledby="welcome-heading">
           <Intro headingId="welcome-heading" />
+          <p className="mb-tip-title">What should we show you?</p>
+          <FocusButtons />
           <div className="mb-welcome-actions">
             <button type="button" className="mb-tip-ok" onClick={closeWelcome}>
               Got it

@@ -62,6 +62,8 @@ def client(catalog: Catalog) -> Iterator[TestClient]:
 def test_endpoints(client: TestClient) -> None:
     listed = client.get("/characters").json()
     assert [c["id"] for c in listed] == [c.id for c in CHARACTERS]
+    assert all(1 <= len(c["covers"]) <= 4 for c in listed)
+    assert all(not cover["kids"] for c in listed for cover in c["covers"])
     board = client.get("/characters/wednesday-addams", params={"k": 2}).json()
     assert board["name"] == "Wednesday Addams" and "not affiliated" in board["disclaimer"].lower()
     assert len(board["results"]) == 2 and board["results"][0]["matched_phrase"]

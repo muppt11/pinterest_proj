@@ -60,7 +60,7 @@ _To be written._ The five differentiators:
 | 7c | Shop similar: outbound Google Shopping / Lens links from an item's real attributes | done |
 | 2b | Character style boards: written style profiles of iconic film/TV looks → catalog matches | done |
 | 8 | Checklist save to multiple boards, nested sub-boards, undo toast | done |
-| 8b | Style-focus filter (Menswear / Womenswear / All) chosen in a first-visit welcome popup; estimated by CLIP zero-shot, labeled "estimated", ambiguous items count as unisex | planned |
+| 8b | Style-focus filter (Menswear / Womenswear / All) chosen in a first-visit welcome popup; estimated by CLIP zero-shot, labeled "estimated", ambiguous items count as unisex | done |
 | 9 | Group trip outfit planning (stretch) | planned |
 | 10 | Evals | planned |
 
@@ -179,6 +179,21 @@ _To be written._ The five differentiators:
 **Why CIEDE2000 instead of RGB distance.** RGB distance overstates differences in blues and understates them in greens. CIEDE2000 is the industry standard for perceived difference. My implementation is checked against 12 published reference pairs from Sharma et al. (2005) to 4 decimal places.
 
 **Measured by.** Feature 10: the mean Delta E of the top 20 results versus random items.
+
+### Style focus: Menswear / Womenswear / All (8b)
+
+**Problem.** A mixed catalog wastes people's time when half the results aren't what they shop for. But the dataset has **no gender field**, and many pieces are genuinely unisex.
+
+**Approach.**
+- Each item gets an estimated *lean*: its similarity to three "womenswear" prompts minus its similarity to three "menswear" prompts, using FashionCLIP.
+- Items within ±0.03 of zero count as **unisex** and always show.
+- The first-visit welcome card asks "What should we show you?" A compact "Show" dropdown in the header changes it later.
+- The filter applies to browsing, every search, More like this, Complete the look, the mood picker, character boards and board analysis.
+- It defaults to "All styles", and the control's tooltip says the split is estimated.
+
+**Checked on the real catalog.** Dresses, skirts, blouses and tops lean womenswear in 91–100% of cases. Polos, shirts and hats lean menswear in 63–72%. T-shirts, pants, shoes and hoodies straddle zero, which is honestly unisex. Womenswear shows 3,720 items, Menswear 3,109, and about 1,670 appear in both.
+
+**Why not a hard classifier.** A binary label would force unisex basics into one side and would present a guess as fact. The lean with a unisex band keeps uncertain items visible to everyone.
 
 ### Mood picker (7b)
 

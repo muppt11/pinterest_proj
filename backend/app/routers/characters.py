@@ -6,7 +6,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 
-from app.deps import get_catalog, get_embedder
+from app.deps import FocusFilter, get_catalog, get_embedder, get_focus
 from app.models import Item, ScoredItem
 from app.services.catalog import Catalog
 from app.services.characters import BY_ID, CHARACTERS, CharacterBoards
@@ -28,6 +28,10 @@ class CharacterOut(BaseModel):
     phrases: list[str]
 
 
+class CharacterCard(CharacterOut):
+    covers: list[Item]  # top catalog matches, shown as a collage (no film images)
+
+
 class CharacterItem(ScoredItem):
     matched_phrase: str  # which part of the style profile this item matched best
 
@@ -46,9 +50,21 @@ def _out(c) -> CharacterOut:  # type: ignore[no-untyped-def]
     return CharacterOut(id=c.id, name=c.name, source=c.source, summary=c.summary, phrases=list(c.phrases))
 
 
-@router.get("", response_model=list[CharacterOut])
-def list_characters() -> list[CharacterOut]:
-    return [_out(c) for c in CHARACTERS]
+@router.get("", response_model=list[CharacterCard])
+def list_characters(
+    catalog: Annotated[Catalog, Depends(get_catalog)],
+    embedder: Annotated[Embedder, Depends(get_embedder)],
+    focus: Annotated[FocusFilter, Depends(get_focus)],
+) -> list[CharacterCard]:
+    """Every character with a 4-item collage of its closest catalog matches."""
+    boards = _boards(embedder)
+    return [
+        CharacterCard(
+            **_out(c).model_dump(),
+            covers=[Item.from_meta(m.hit.item) for m in boards.board(catalog, c, k=4, exclude_ids=focus.excluded)],
+        )
+        for c in CHARACTERS
+    ]
 
 
 @router.get("/{character_id}", response_model=CharacterBoard)
@@ -56,13 +72,14 @@ def character_board(
     character_id: str,
     catalog: Annotated[Catalog, Depends(get_catalog)],
     embedder: Annotated[Embedder, Depends(get_embedder)],
+    focus: Annotated[FocusFilter, Depends(get_focus)],
     k: Annotated[int, Query(ge=1, le=60)] = 24,
 ) -> CharacterBoard:
     """Catalog items in the character's signature style (adult clothing), each with the phrase it matched."""
     character = BY_ID.get(character_id)
     if character is None:
         raise HTTPException(status_code=404, detail="Unknown character.")
-    matches = _boards(embedder).board(catalog, character, k)
+    matches = _boards(embedder).board(catalog, character, k, exclude_ids=focus.excluded)
     return CharacterBoard(
         **_out(character).model_dump(),
         disclaimer=DISCLAIMER,

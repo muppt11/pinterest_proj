@@ -59,6 +59,7 @@ def complete_look(
     per_group: int = 6,
     centroid: np.ndarray | None = None,
     item_weight: float = DEFAULT_ITEM_WEIGHT,
+    exclude_ids: set[str] | None = None,
 ) -> tuple[str | None, list[LookGroup]]:
     """Return the anchor's group and, for each complementary group, the best-matching items.
 
@@ -73,6 +74,6 @@ def complete_look(
         return None, []
     query = blended_query(catalog.vector(item_id), centroid, item_weight)
     return group, [
-        LookGroup(g, catalog.search(query, k=per_group, categories=GROUPS[g], kids=item["kids"], exclude_ids={item_id}))
+        LookGroup(g, catalog.search(query, k=per_group, categories=GROUPS[g], kids=item["kids"], exclude_ids={item_id} | (exclude_ids or set())))
         for g in COMPLEMENTS[group]
     ]

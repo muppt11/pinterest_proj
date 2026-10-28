@@ -4,6 +4,7 @@ import { AssistantPanel } from "./components/AssistantPanel";
 import { BoardsPage } from "./components/BoardsPage";
 import { CharactersPage } from "./components/CharactersPage";
 import { MoodPage } from "./components/MoodPage";
+import { useFocus } from "./focus";
 import { SavesProvider } from "./saves";
 import { BoardAnalyzer } from "./components/BoardAnalyzer";
 import { CloseUp } from "./components/CloseUp";
@@ -46,6 +47,9 @@ export default function App() {
   const [showWeak, setShowWeak] = useState(false);
   const [assistantOpen, setAssistantOpen] = useState(false);
   const [lastAnalysis, setLastAnalysis] = useState<BoardAnalysis | null>(null);
+  const focus = useFocus();
+  // Re-runs whatever the feed last showed (browse or a search) when the style focus changes.
+  const rerun = useRef<() => void>(() => {});
   const sentinel = useRef<HTMLDivElement>(null);
   const openId = itemIdFromPath(path);
 
@@ -89,7 +93,18 @@ export default function App() {
   // Load the home feed once in the background, without leaving a deep-linked page.
   useEffect(() => {
     browse(false);
+    rerun.current = () => browse(false);
   }, [browse]);
+
+  const firstFocus = useRef(true);
+  useEffect(() => {
+    if (firstFocus.current) {
+      firstFocus.current = false;
+      return;
+    }
+    // Other pages remount via <main key>; only the home feed re-runs its last query here.
+    if (window.location.pathname === "/") rerun.current();
+  }, [focus]);
 
   const loadMore = useCallback(async () => {
     if (feed.kind !== "browse" || loading || items.length >= total) return;
@@ -132,23 +147,29 @@ export default function App() {
     else navigate("/");
   }
 
-  const searchText = (query: string) =>
-    run({ kind: "text", query }, async () => {
+  const searchText = (query: string) => {
+    rerun.current = () => searchText(query);
+    return run({ kind: "text", query }, async () => {
       const r = await api.searchText(query);
       return { items: r.results, total: r.results.length, lowRelevance: r.low_relevance };
     });
+  };
 
-  const searchColor = (hex: string, query: string) =>
-    run({ kind: "color", hex, query }, async () => {
+  const searchColor = (hex: string, query: string) => {
+    rerun.current = () => searchColor(hex, query);
+    return run({ kind: "color", hex, query }, async () => {
       const r = await api.searchColor(hex, query || undefined);
       return { items: r.results, total: r.results.length };
     });
+  };
 
-  const searchImage = (file: File) =>
-    run({ kind: "image", fileName: file.name }, async () => {
+  const searchImage = (file: File) => {
+    rerun.current = () => searchImage(file);
+    return run({ kind: "image", fileName: file.name }, async () => {
       const r = await api.searchImage(file);
       return { items: r.results, total: r.results.length };
     });
+  };
 
   const title =
     feed.kind === "text"
@@ -168,9 +189,12 @@ export default function App() {
         onSearchText={searchText}
         onSearchImage={searchImage}
         onSearchColor={searchColor}
-        onHome={() => browse()}
+        onHome={() => {
+          rerun.current = () => browse(false);
+          browse();
+        }}
       />
-      <main style={{ padding: "8px var(--mb-gutter) 96px" }}>
+      <main key={path === "/" ? "feed" : `${path}:${focus}`} style={{ padding: "8px var(--mb-gutter) 96px" }}>
         {openId ? (
           <CloseUp itemId={openId} board={board} onBack={back} onOpen={open} />
         ) : path === "/characters" || path.startsWith("/characters/") ? (

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { api, type CharacterBoard, type CharacterInfo, type Item } from "../api/client";
+import { api, imageSrc, type CharacterBoard, type CharacterInfo, type Item } from "../api/client";
 import { FeatureTip } from "./FeatureTip";
 import { ItemGrid } from "./ItemGrid";
 import { PageTitle } from "./PageTitle";
@@ -13,7 +13,7 @@ interface Props {
 
 /** Film/TV character style boards: pick a character, get catalog items in their signature style. */
 export function CharactersPage({ characterId, onNavigate, onOpen }: Props) {
-  const [characters, setCharacters] = useState<CharacterInfo[]>([]);
+  const [characters, setCharacters] = useState<(CharacterInfo & { covers: Item[] })[]>([]);
   const [board, setBoard] = useState<CharacterBoard | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -43,12 +43,10 @@ export function CharactersPage({ characterId, onNavigate, onOpen }: Props) {
           {characters.map((c) => (
             <li key={c.id}>
               <button type="button" className="mb-char-card" onClick={() => onNavigate(`/characters/${c.id}`)}>
-                <span className="mb-char-initials" aria-hidden="true">
-                  {c.name
-                    .split(" ")
-                    .map((w) => w[0])
-                    .join("")
-                    .slice(0, 2)}
+                <span className="mb-char-collage" aria-hidden="true">
+                  {c.covers.slice(0, 4).map((item) => (
+                    <img key={item.id} src={imageSrc(item)} alt="" loading="lazy" />
+                  ))}
                 </span>
                 <span className="mb-char-name">{c.name}</span>
                 <span className="mb-char-source">{c.source}</span>

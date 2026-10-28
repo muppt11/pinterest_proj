@@ -38,16 +38,21 @@
   background: var(--mb-surface-muted);
 }
 
-.mb-char-initials {
+.mb-char-collage {
   display: grid;
-  place-items: center;
-  width: 48px;
-  height: 48px;
-  margin-bottom: 8px;
-  border-radius: 50%;
-  background: var(--mb-selected);
-  color: var(--mb-bg);
-  font-weight: 800;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px;
+  aspect-ratio: 1;
+  margin-bottom: 10px;
+  overflow: hidden;
+  border-radius: 12px;
+  background: var(--mb-surface-muted);
+}
+
+.mb-char-collage img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
 .mb-char-name {

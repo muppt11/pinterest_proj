@@ -1,14 +1,19 @@
 """FastAPI dependencies. Tests swap these via app.dependency_overrides."""
 
+from collections.abc import Callable
+from dataclasses import dataclass
 from functools import lru_cache
+from typing import Annotated
 
-from fastapi import HTTPException
+import numpy as np
+from fastapi import Depends, HTTPException, Query
 from langchain_core.language_models import BaseChatModel
 
 from app.agent.vision import VisionDescriber
 from app.config import get_settings
 from app.services.catalog import Catalog
 from app.services.embedder import Embedder, ProcessEmbedder
+from app.services.style_focus import Focus, FocusIndex
 
 
 @lru_cache
@@ -44,3 +49,33 @@ def get_describer() -> VisionDescriber:
 def get_embedder() -> Embedder:
     """The FashionCLIP model in its own worker process, started on first use (takes a few seconds)."""
     return ProcessEmbedder(get_settings().model_dir)
+
+
+def get_embedder_factory() -> Callable[[], Embedder]:
+    """Lazy access to the embedder, for dependencies that only sometimes need the model."""
+    return get_embedder
+
+
+@dataclass
+class FocusFilter:
+    """The request's style focus, resolved to the item IDs it hides (empty for "all")."""
+
+    focus: Focus
+    excluded: set[str]
+    mask: np.ndarray | None  # per-row allowed mask, or None for "all"
+
+
+def get_focus(
+    catalog: Annotated[Catalog, Depends(get_catalog)],
+    embedder_factory: Annotated[Callable[[], Embedder], Depends(get_embedder_factory)],
+    focus: Annotated[Focus, Query(description="estimated style focus: all, women, or men")] = "all",
+) -> FocusFilter:
+    """Query param `focus`; the per-item estimate is computed once per catalog and cached on it.
+    The model is only loaded when a focus other than "all" is requested."""
+    if focus == "all":
+        return FocusFilter("all", set(), None)
+    index = getattr(catalog, "_focus_index", None)
+    if index is None:
+        index = FocusIndex(catalog, embedder_factory())
+        catalog._focus_index = index  # type: ignore[attr-defined]
+    return FocusFilter(focus, index.excluded_ids(focus), index.allowed(focus))

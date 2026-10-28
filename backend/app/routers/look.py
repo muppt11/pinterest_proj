@@ -5,7 +5,7 @@ from typing import Annotated
 import numpy as np
 from fastapi import APIRouter, Depends, HTTPException
 
-from app.deps import get_catalog
+from app.deps import FocusFilter, get_catalog, get_focus
 from app.models import CompleteLook, CompleteLookRequest, LookGroupOut
 from app.routers.search import _scored
 from app.services.catalog import Catalog
@@ -15,7 +15,11 @@ router = APIRouter(tags=["complete the look"])
 
 
 @router.post("/complete-look", response_model=CompleteLook)
-def complete_look_endpoint(body: CompleteLookRequest, catalog: Annotated[Catalog, Depends(get_catalog)]) -> CompleteLook:
+def complete_look_endpoint(
+    body: CompleteLookRequest,
+    catalog: Annotated[Catalog, Depends(get_catalog)],
+    focus: Annotated[FocusFilter, Depends(get_focus)],
+) -> CompleteLook:
     """Bottoms/shoes/outerwear/etc. that go with an item, ranked by shared style (and the board's taste if given)."""
     centroid = None
     if body.centroid is not None:
@@ -23,7 +27,7 @@ def complete_look_endpoint(body: CompleteLookRequest, catalog: Annotated[Catalog
         if centroid.shape != (catalog.index.d,) or not np.isfinite(centroid).all() or np.linalg.norm(centroid) == 0:
             raise HTTPException(status_code=422, detail=f"centroid must be a non-zero vector of length {catalog.index.d}.")
     try:
-        group, groups = complete_look(catalog, body.item_id, body.per_group, centroid, body.item_weight)
+        group, groups = complete_look(catalog, body.item_id, body.per_group, centroid, body.item_weight, focus.excluded)
     except KeyError:
         raise HTTPException(status_code=404, detail="Item not found.") from None
     return CompleteLook(

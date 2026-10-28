@@ -92,13 +92,15 @@ class CharacterBoards:
             self._phrases[character.id] = self._embedder.embed_texts(list(character.phrases))
         return self._phrases[character.id]
 
-    def board(self, catalog: Catalog, character: Character, k: int = 24, kids: bool | None = False) -> list[CharacterMatch]:
+    def board(
+        self, catalog: Catalog, character: Character, k: int = 24, kids: bool | None = False, exclude_ids: set[str] | None = None
+    ) -> list[CharacterMatch]:
         """Top-k items for the character's style (adult items by default), each with its best phrase."""
         vectors = self.phrase_vectors(character)
         centroid = vectors.mean(0)
         centroid /= np.linalg.norm(centroid)
         matches = []
-        for hit in catalog.search(centroid, k=k, kids=kids):
+        for hit in catalog.search(centroid, k=k, kids=kids, exclude_ids=exclude_ids):
             scores = vectors @ catalog.vector(hit.item["id"])
             best = int(np.argmax(scores))
             matches.append(CharacterMatch(hit, character.phrases[best], float(scores[best])))

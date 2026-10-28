@@ -1,4 +1,5 @@
 /** Typed client for the MoodBoards API. In dev, Vite proxies /api to FastAPI on :8000. */
+import { getFocus } from "../focus";
 
 const BASE = "/api";
 
@@ -102,8 +103,15 @@ export class ApiError extends Error {
   }
 }
 
+/** Adds the viewer's style focus to a URL (endpoints that don't filter simply ignore it). */
+export function withFocus(path: string): string {
+  const focus = getFocus();
+  if (focus === "all") return path;
+  return `${path}${path.includes("?") ? "&" : "?"}focus=${focus}`;
+}
+
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(`${BASE}${path}`, init);
+  const response = await fetch(`${BASE}${withFocus(path)}`, init);
   if (!response.ok) {
     let detail = response.statusText;
     try {
@@ -194,7 +202,7 @@ export const api = {
   searchColor: (hex: string, q?: string, k = 50) =>
     request<ColorResults>(`/search/color?hex=${encodeURIComponent(hex)}&k=${k}${q ? `&q=${encodeURIComponent(q)}` : ""}`),
   styles: () => request<string[]>("/styles"),
-  characters: () => request<CharacterInfo[]>("/characters"),
+  characters: () => request<(CharacterInfo & { covers: Item[] })[]>("/characters"),
   characterBoard: (id: string, k = 30) => request<CharacterBoard>(`/characters/${encodeURIComponent(id)}?k=${k}`),
   mood: (hex: string, style: string, colorWeight = 0.5, k = 40) =>
     request<ColorResults>(

@@ -77,6 +77,7 @@ def color_search(
     text_vector: np.ndarray | None = None,
     color_weight: float = 0.6,
     kids: bool | None = None,
+    allowed: np.ndarray | None = None,
 ) -> list[ColorHit]:
     """Top-k items by color (and text, if given). Raises ValueError for a malformed hex."""
     target = rgb_to_lab(np.array(hex_to_rgb(hex_color)))
@@ -91,6 +92,8 @@ def color_search(
         combined = color_weight * color_score + (1 - color_weight) * text_score
 
     mask = index.has_color.copy()
+    if allowed is not None:
+        mask &= allowed
     if kids is not None:
         mask &= np.array([item["kids"] == kids for item in catalog.items])
     combined = np.where(mask, combined, -1)

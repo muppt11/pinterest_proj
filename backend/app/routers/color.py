@@ -6,7 +6,7 @@ from urllib.parse import quote_plus
 import numpy as np
 from fastapi import APIRouter, Depends, HTTPException, Query
 
-from app.deps import get_catalog, get_embedder
+from app.deps import FocusFilter, get_catalog, get_embedder, get_focus
 from app.models import ColorMatchItem, ColorResults, Item, ShopLinks
 from app.services.board import STYLE_WORDS
 from app.services.catalog import Catalog
@@ -17,6 +17,7 @@ router = APIRouter(tags=["color"])
 
 CatalogDep = Annotated[Catalog, Depends(get_catalog)]
 EmbedderDep = Annotated[Embedder, Depends(get_embedder)]
+FocusDep = Annotated[FocusFilter, Depends(get_focus)]
 HexColor = Annotated[str, Query(pattern=r"^#?[0-9a-fA-F]{6}$", description="picked color, e.g. #9caf88")]
 Weight = Annotated[float, Query(ge=0, le=1, description="1 = color only, 0 = text/style only")]
 K = Annotated[int, Query(ge=1, le=100)]
@@ -62,6 +63,7 @@ def _hex(value: str) -> str:
 def search_color(
     catalog: CatalogDep,
     embedder: EmbedderDep,
+    focus: FocusDep,
     hex: HexColor,
     q: Annotated[str | None, Query(max_length=200)] = None,
     k: K = 30,
@@ -71,7 +73,7 @@ def search_color(
     with a text query through the CLIP text encoder, e.g. hex=#9caf88 & q=linen."""
     query = q.strip() if q else None
     text_vector = embedder.embed_texts([query])[0] if query else None
-    hits = color_search(catalog, color_index(catalog), hex, k, text_vector, color_weight if query else 1.0)
+    hits = color_search(catalog, color_index(catalog), hex, k, text_vector, color_weight if query else 1.0, allowed=focus.mask)
     return ColorResults(color=_hex(hex), query=query, color_weight=color_weight if query else 1.0, results=_results(catalog, hits))
 
 
@@ -85,6 +87,7 @@ def styles() -> list[str]:
 def mood(
     catalog: CatalogDep,
     embedder: EmbedderDep,
+    focus: FocusDep,
     hex: HexColor,
     style: str,
     k: K = 30,
@@ -95,7 +98,7 @@ def mood(
         raise HTTPException(status_code=422, detail=f"Unknown style. Choose from: {', '.join(STYLE_WORDS)}")
     prompt = f"a {style} outfit"
     text_vector = embedder.embed_texts([prompt])[0]
-    hits = color_search(catalog, color_index(catalog), hex, k, text_vector, color_weight)
+    hits = color_search(catalog, color_index(catalog), hex, k, text_vector, color_weight, allowed=focus.mask)
     return ColorResults(color=_hex(hex), query=style, color_weight=color_weight, results=_results(catalog, hits))
 
 

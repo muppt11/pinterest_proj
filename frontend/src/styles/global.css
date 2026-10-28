@@ -45,6 +45,39 @@ textarea {
   box-shadow: 0 0 0 4px var(--mb-focus);
 }
 
+.mb-focus-select select {
+  height: 48px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: var(--mb-radius-pill);
+  background: var(--mb-surface-muted);
+  color: var(--mb-ink);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.mb-focus-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 6px 0 4px;
+}
+
+.mb-focus-buttons button {
+  padding: 8px 12px;
+  border: 0;
+  border-radius: var(--mb-radius-pill);
+  background: var(--mb-surface-muted);
+  color: var(--mb-ink);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.mb-focus-buttons button.is-on {
+  background: var(--mb-selected);
+  color: var(--mb-bg);
+}
+
 .mb-color-dot {
   display: inline-block;
   width: 14px;

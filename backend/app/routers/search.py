@@ -4,7 +4,7 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
 
-from app.deps import get_catalog, get_embedder
+from app.deps import FocusFilter, get_catalog, get_embedder, get_focus
 from app.models import Item, ItemPage, ScoredItem, SearchResults
 from app.services.catalog import Catalog, Hit
 from app.services.embedder import Embedder
@@ -14,6 +14,7 @@ router = APIRouter(tags=["search"])
 
 CatalogDep = Annotated[Catalog, Depends(get_catalog)]
 EmbedderDep = Annotated[Embedder, Depends(get_embedder)]
+FocusDep = Annotated[FocusFilter, Depends(get_focus)]
 K = Annotated[int, Query(ge=1, le=100)]
 
 # Text→image relevance cutoff on the mean cosine score of the top 10 results.
@@ -35,13 +36,14 @@ def _check_category(catalog: Catalog, category: str | None) -> None:
 @router.get("/items", response_model=ItemPage)
 def list_items(
     catalog: CatalogDep,
+    focus: FocusDep,
     offset: Annotated[int, Query(ge=0)] = 0,
     limit: Annotated[int, Query(ge=1, le=200)] = 50,
     category: str | None = None,
 ) -> ItemPage:
     """Browse the catalog in a stable order (the home grid)."""
     _check_category(catalog, category)
-    pool = [i for i in catalog.items if category is None or i["category"] == category]
+    pool = [i for i in catalog.items if (category is None or i["category"] == category) and i["id"] not in focus.excluded]
     return ItemPage(items=[Item.from_meta(i) for i in pool[offset : offset + limit]], total=len(pool), offset=offset)
 
 
@@ -55,12 +57,12 @@ def get_item(item_id: str, catalog: CatalogDep) -> Item:
 
 
 @router.get("/items/{item_id}/similar", response_model=SearchResults)
-def similar_items(item_id: str, catalog: CatalogDep, k: K = 20, category: str | None = None) -> SearchResults:
+def similar_items(item_id: str, catalog: CatalogDep, focus: FocusDep, k: K = 20, category: str | None = None) -> SearchResults:
     """'More like this': nearest neighbours of a catalog item, excluding itself."""
     if catalog.get(item_id) is None:
         raise HTTPException(status_code=404, detail="Item not found.")
     _check_category(catalog, category)
-    hits = catalog.search(catalog.vector(item_id), k=k, category=category, exclude_ids={item_id})
+    hits = catalog.search(catalog.vector(item_id), k=k, category=category, exclude_ids={item_id} | focus.excluded)
     return SearchResults(results=_scored(hits))
 
 
@@ -68,6 +70,7 @@ def similar_items(item_id: str, catalog: CatalogDep, k: K = 20, category: str | 
 def search_text(
     catalog: CatalogDep,
     embedder: EmbedderDep,
+    focus: FocusDep,
     q: Annotated[str, Query(min_length=1, max_length=200)],
     k: K = 20,
     category: str | None = None,
@@ -78,7 +81,7 @@ def search_text(
         raise HTTPException(status_code=422, detail="Query can't be blank.")
     _check_category(catalog, category)
     vector = embedder.embed_texts([query])[0]
-    hits = catalog.search(vector, k=max(k, RELEVANCE_WINDOW), category=category)
+    hits = catalog.search(vector, k=max(k, RELEVANCE_WINDOW), category=category, exclude_ids=focus.excluded)
     window = hits[:RELEVANCE_WINDOW]
     relevance = sum(h.score for h in window) / len(window) if window else 0.0
     return SearchResults(query=query, results=_scored(hits[:k]), low_relevance=relevance < MIN_TEXT_RELEVANCE)
@@ -88,6 +91,7 @@ def search_text(
 async def search_image(
     catalog: CatalogDep,
     embedder: EmbedderDep,
+    focus: FocusDep,
     image: Annotated[UploadFile, File(description="JPEG, PNG, or WebP up to 10 MB")],
     k: K = 20,
     category: str | None = None,
@@ -96,4 +100,4 @@ async def search_image(
     _check_category(catalog, category)
     _, decoded = await read_image(image)
     vector = embedder.embed_images([decoded])[0]
-    return SearchResults(results=_scored(catalog.search(vector, k=k, category=category)))
+    return SearchResults(results=_scored(catalog.search(vector, k=k, category=category, exclude_ids=focus.excluded)))

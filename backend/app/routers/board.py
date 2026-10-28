@@ -6,7 +6,7 @@ from typing import Annotated
 import numpy as np
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
 
-from app.deps import get_catalog, get_embedder
+from app.deps import FocusFilter, get_catalog, get_embedder, get_focus
 from app.models import Aesthetic, BoardAnalysis, StyleTag
 from app.routers.search import _scored
 from app.services.board import STYLE_WORDS, choose_clusters, style_tags
@@ -29,6 +29,7 @@ async def analyze_board(
     images: Annotated[list[UploadFile], File(description="3–20 outfit images (JPEG, PNG, WebP; 10 MB each)")],
     catalog: Annotated[Catalog, Depends(get_catalog)],
     embedder: Annotated[Embedder, Depends(get_embedder)],
+    focus: Annotated[FocusFilter, Depends(get_focus)],
     k: Annotated[int, Query(ge=1, le=50, description="catalog items per aesthetic")] = 12,
 ) -> BoardAnalysis:
     """Embed the board, split it into 1–3 aesthetics by silhouette score, and match each to the catalog."""
@@ -41,7 +42,7 @@ async def analyze_board(
     words = _style_vectors(embedder)
     aesthetics = []
     for j, centroid in enumerate(clustering.centroids):
-        hits = catalog.search(centroid, k=k)
+        hits = catalog.search(centroid, k=k, exclude_ids=focus.excluded)
         aesthetics.append(
             Aesthetic(
                 index=j,

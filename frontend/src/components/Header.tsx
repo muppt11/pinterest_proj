@@ -1,5 +1,6 @@
 import { useRef, useState, type FormEvent } from "react";
 import { FeatureTip } from "./FeatureTip";
+import { FocusSelect } from "./FocusPicker";
 import { ThemeToggle } from "./ThemeToggle";
 import "./Header.css";
 
@@ -18,8 +19,8 @@ const NAV = [
   { to: "/", label: "Discover" },
   { to: "/mood", label: "Mood" },
   { to: "/characters", label: "Characters" },
-  { to: "/board", label: "Analyze board" },
   { to: "/boards", label: "Boards" },
+  { to: "/board", label: "Analyze board" },
 ];
 
 /** Top bar: logo + wordmark, nav tabs, pill search field with photo search, and the theme toggle. */
@@ -159,6 +160,7 @@ export function Header({ onAsk, path, onNavigate, onSearchText, onSearchImage, o
           </div>
         </FeatureTip>
       </form>
+      <FocusSelect />
       <FeatureTip tipId="assistant" align="end">
         <button type="button" className="mb-ask-button" onClick={onAsk}>
           <svg aria-hidden="true" viewBox="0 0 24 24" width="18" height="18">

@@ -11,7 +11,7 @@ beforeEach(() => {
     vi.fn(async (url: string) =>
       new Response(
         JSON.stringify(
-          url === "/api/characters" ? [info] : { ...info, disclaimer: "Not affiliated with or endorsed by the studio.", results: [result] },
+          url === "/api/characters" ? [{ ...info, covers: [result] }] : { ...info, disclaimer: "Not affiliated with or endorsed by the studio.", results: [result] },
         ),
       ),
     ),
@@ -23,7 +23,9 @@ describe("CharactersPage", () => {
   it("lists characters and navigates to one", async () => {
     const onNavigate = vi.fn();
     render(<CharactersPage characterId={null} onNavigate={onNavigate} onOpen={() => {}} />);
-    fireEvent.click(await screen.findByRole("button", { name: /Wednesday Addams/ }));
+    const card = await screen.findByRole("button", { name: /Wednesday Addams/ });
+    expect(card.querySelectorAll("img")).toHaveLength(1); // catalog collage, not a film still
+    fireEvent.click(card);
     expect(onNavigate).toHaveBeenCalledWith("/characters/wednesday-addams");
   });
 
