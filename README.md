@@ -61,6 +61,63 @@ _To be written._ The five differentiators:
 | 9 | Group trip outfit planning (stretch) | planned |
 | 10 | Evals | planned |
 
+### 1. Visual and text search
+
+**Problem.** People often know what they want only as a picture or a loose description ("oversized beige knit"). Keyword search can't connect either one to items whose metadata never uses those words.
+
+**Approach.**
+- Every catalog image is embedded once with Marqo-FashionCLIP, a CLIP model fine-tuned on fashion.
+- Vectors are L2-normalized and stored in a FAISS `IndexFlatIP`, where inner product equals cosine similarity.
+- Text queries and uploaded photos go through the same model, so either one can be compared directly with item images.
+- "More like this" reuses each item's stored vector, so it needs no extra model call.
+
+**Why this approach.**
+- At about 5k items, exact search takes about a millisecond, so an approximate index (IVF or HNSW) would add recall loss and tuning for no benefit.
+- Filtered searches (category, kids) simply scan everything and filter.
+- I'd switch to IVF-PQ or HNSW above roughly 1M items.
+
+**Alternatives considered.**
+- General OpenAI CLIP. Rejected: FashionCLIP is trained on product images and attributes, which matches this domain better.
+- A hosted vector database. Rejected: unnecessary at this scale, and it would break "runs locally with no API keys."
+
+**Measured by.** Recall@10 on held-out same-category queries (feature 10).
+
+### 2. Board analysis
+
+**Problem.** Real boards mix looks: half "clean minimal" and half "70s suede." Averaging all their images produces a beige centroid that matches neither.
+
+**Approach.**
+1. Embed the 3–20 board images.
+2. Run k-means for k = 2 and 3 (k-means++ init, 10 restarts) and score each split with the mean silhouette using cosine distance.
+3. Keep the best split only if its silhouette is at least 0.1 **and** every pair of aesthetic centroids is at least 0.1 apart in cosine distance. Otherwise the board counts as one aesthetic.
+4. For each aesthetic, return the top catalog matches for its centroid, plus the three closest words from a fixed style vocabulary, scored with the CLIP text encoder.
+
+**Why the second check.** My first version used silhouette alone, and a unit test caught it splitting one very tight group with a silhouette of 0.67. Silhouette is scale-free: inside a tight cluster, random noise looks like structure. The centroid-gap rule asks the question that actually matters, "are these looks really different?"
+
+**Alternatives considered.**
+- scikit-learn's KMeans. Rejected for now: at 20 points, about 40 lines of numpy is enough, easy to read, and avoids another dependency.
+- The elbow method. Rejected: it needs a human to read a plot.
+- HDBSCAN. Rejected: unreliable with 3–20 points.
+
+**Limits.**
+- Both thresholds are starting points. Feature 10's evals check them against real boards.
+- Style words are hints from a fixed list, not a trained classifier.
+
+### 3. Complete the look
+
+**Problem.** "I love this jacket. What do I wear it with?"
+
+**Approach.**
+- Each of the dataset's 17 usable labels is mapped to an outfit role (tops, bottoms, one-piece, outerwear, shoes, hats). Each role has complementary roles; for example, a top pulls bottoms, shoes, outerwear and hats.
+- Within each complementary role, items are ranked by similarity to the anchor item. If you came from a board aesthetic, the query is blended as 0.7 × item + 0.3 × board centroid.
+- Suggestions match the anchor's real `kids` flag.
+
+**Why this approach.** Pinterest's Complete the Look learns compatibility from scene images where items are worn together. This dataset has single-item photos only, so I use *shared style in embedding space* as a proxy: similar color, formality and texture. That's an honest limitation, and the README says so rather than claiming learned compatibility.
+
+**Alternatives considered.** Training a compatibility model on Polyvore outfits. Rejected for now: the license is unclear and it's out of scope for a laptop demo.
+
+**Measured by.** Rule checks in feature 10: no same-role suggestions, no kids/adult mixing, and the board blend should raise suggestions' similarity to the board centroid.
+
 ### Mood picker (7b)
 
 **What it does.** Pick a color on a color wheel, then pick an aesthetic (for example minimalist, streetwear, or coastal). The app returns a curated grid of items that match both.
@@ -97,7 +154,30 @@ The layout follows conventions shared by visual-discovery apps: a masonry grid o
 
 ## 5. Architecture
 
-_Mermaid diagram: added in feature 1 and kept current._
+```mermaid
+flowchart LR
+  subgraph Offline["Offline: make index"]
+    DS[clothing-dataset<br/>CC0 images + CSV] --> BI[scripts/build_index.py]
+    M[(Marqo-FashionCLIP<br/>local, SHA-256 verified)] --> BI
+    BI --> IDX[(FAISS IndexFlatIP<br/>+ metadata.json)]
+  end
+  subgraph API["FastAPI :8000"]
+    S["/search/text · /search/image<br/>/items · /items/{id}/similar"]
+    B["/board/analyze<br/>k-means + silhouette + gap check"]
+    C["/complete-look<br/>role groups + board blend"]
+    E[Embedder<br/>MPS on Apple silicon]
+  end
+  subgraph Web["React + Vite :5173"]
+    G[Masonry grid · search bar]
+    U[Close-up · More like this · Complete the look]
+    A[Board analyzer]
+  end
+  IDX --> S & B & C
+  E --> S & B
+  G & U & A -- "/api (Vite proxy)" --> API
+```
+
+Planned additions (features 4–9): LangGraph agent with Ollama, SQLite for boards, saves, review queue and trips, provenance and pHash services, color index, Open-Meteo client, and SSE for trip activity.
 
 ## 6. Eval results
 
