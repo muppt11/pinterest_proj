@@ -74,8 +74,26 @@ class FashionClipEmbedder:
 _worker: FashionClipEmbedder | None = None
 
 
-def _init_worker(local_dir: Path | None) -> None:
+def _exit_when_orphaned(parent_pid: int, interval_s: float = 2.0) -> None:
+    """Background thread: if the API process dies (e.g. a dev-server reload), exit too instead of
+    lingering with a copy of the model in memory."""
+    import os
+    import threading
+    import time
+
+    def watch() -> None:
+        while True:
+            time.sleep(interval_s)
+            if os.getppid() != parent_pid:
+                os._exit(0)
+
+    threading.Thread(target=watch, daemon=True, name="orphan-watch").start()
+
+
+def _init_worker(local_dir: Path | None, parent_pid: int | None = None) -> None:
     global _worker
+    if parent_pid is not None:
+        _exit_when_orphaned(parent_pid)
     _worker = FashionClipEmbedder(local_dir)
 
 
@@ -99,13 +117,14 @@ class ProcessEmbedder:
 
     def __init__(self, local_dir: Path | None = None) -> None:
         import multiprocessing
+        import os
         from concurrent.futures import ProcessPoolExecutor
 
         self._pool = ProcessPoolExecutor(
             max_workers=1,
             mp_context=multiprocessing.get_context("spawn"),
             initializer=_init_worker,
-            initargs=(local_dir,),
+            initargs=(local_dir, os.getpid()),
         )
         self.dim: int = self._pool.submit(_worker_dim).result()  # waits for the model to load
 

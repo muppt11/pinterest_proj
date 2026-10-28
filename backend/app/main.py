@@ -1,11 +1,15 @@
 """FastAPI entry point for MoodBoards."""
 
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 from app.config import get_settings
+from app.deps import get_embedder
 from app.routers import assistant, board, boards, characters, color, look, me, search
 
 
@@ -16,10 +20,20 @@ class Health(BaseModel):
     app: str
 
 
+@asynccontextmanager
+async def lifespan(_: FastAPI) -> AsyncIterator[None]:
+    """On shutdown, stop the embedding worker process if one was started."""
+    yield
+    if get_embedder.cache_info().currsize:
+        embedder = get_embedder()
+        if hasattr(embedder, "close"):
+            embedder.close()
+
+
 def create_app() -> FastAPI:
     """Build the FastAPI application with middleware and routers attached."""
     settings = get_settings()
-    app = FastAPI(title="MoodBoards API", version="0.1.0")
+    app = FastAPI(title="MoodBoards API", version="0.1.0", lifespan=lifespan)
     app.add_middleware(
         CORSMiddleware,
         allow_origins=[settings.frontend_origin],
