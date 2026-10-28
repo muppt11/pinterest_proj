@@ -1,0 +1,122 @@
+.mb-mood {
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.mb-mood-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 32px;
+  justify-content: center;
+  padding: 24px;
+  border-radius: var(--mb-radius-panel);
+  background: var(--mb-surface-accent);
+}
+
+.mb-mood-wheel-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+.mb-mood-wheel {
+  position: relative;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle closest-side, #9a9a9a, transparent),
+    conic-gradient(hsl(0 100% 50%), hsl(60 100% 50%), hsl(120 100% 50%), hsl(180 100% 50%), hsl(240 100% 50%), hsl(300 100% 50%), hsl(360 100% 50%));
+  cursor: crosshair;
+  touch-action: none;
+}
+
+.mb-mood-wheel:focus-visible {
+  box-shadow: 0 0 0 4px var(--mb-focus);
+}
+
+.mb-mood-dot {
+  position: absolute;
+  width: 26px;
+  height: 26px;
+  border: 3px solid #fff;
+  border-radius: 50%;
+  box-shadow: 0 0 0 1px rgb(0 0 0 / 0.4), 0 2px 6px rgb(0 0 0 / 0.3);
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+
+.mb-mood-light {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.mb-mood-swatch {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.mb-mood-swatch span {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  box-shadow: inset 0 0 0 1px rgb(0 0 0 / 0.2);
+}
+
+.mb-mood-styles {
+  flex: 1;
+  min-width: 260px;
+  max-width: 560px;
+}
+
+.mb-mood-styles h2 {
+  margin: 0 0 12px;
+  font-size: 1.1rem;
+}
+
+.mb-mood-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.mb-mood-chips button {
+  padding: 10px 16px;
+  border: 0;
+  border-radius: var(--mb-radius-pill);
+  background: var(--mb-surface-muted);
+  color: var(--mb-ink);
+  font-weight: 600;
+  text-transform: capitalize;
+  cursor: pointer;
+}
+
+.mb-mood-chips button.is-on {
+  background: var(--mb-selected);
+  color: var(--mb-bg);
+}
+
+.mb-mood-weight {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 20px;
+  font-weight: 600;
+}
+
+.mb-mood-weight input {
+  flex: 1;
+  accent-color: var(--mb-primary);
+}
+
+.mb-mood-summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 24px 0 12px;
+  color: var(--mb-ink-muted);
+  text-transform: none;
+}

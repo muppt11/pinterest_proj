@@ -9,23 +9,29 @@ interface HeaderProps {
   onNavigate: (to: string) => void;
   onSearchText: (query: string) => void;
   onSearchImage: (file: File) => void;
+  /** Color search; `query` (optional) is blended in, e.g. sage + "linen". */
+  onSearchColor: (hex: string, query: string) => void;
   onHome: () => void;
 }
 
 const NAV = [
   { to: "/", label: "Discover" },
+  { to: "/mood", label: "Mood" },
   { to: "/board", label: "Analyze board" },
   { to: "/boards", label: "Boards" },
 ];
 
 /** Top bar: logo + wordmark, nav tabs, pill search field with photo search, and the theme toggle. */
-export function Header({ onAsk, path, onNavigate, onSearchText, onSearchImage, onHome }: HeaderProps) {
+export function Header({ onAsk, path, onNavigate, onSearchText, onSearchImage, onSearchColor, onHome }: HeaderProps) {
   const [query, setQuery] = useState("");
+  const [color, setColor] = useState<string | null>(null);
   const fileInput = useRef<HTMLInputElement>(null);
+  const colorTimer = useRef<number | undefined>(undefined);
 
   function submit(e: FormEvent) {
     e.preventDefault();
-    if (query.trim()) onSearchText(query.trim());
+    if (color) onSearchColor(color, query.trim());
+    else if (query.trim()) onSearchText(query.trim());
   }
 
   return (
@@ -37,6 +43,7 @@ export function Header({ onAsk, path, onNavigate, onSearchText, onSearchImage, o
         onClick={(e) => {
           e.preventDefault();
           setQuery("");
+          setColor(null);
           onHome();
         }}
       >
@@ -82,6 +89,43 @@ export function Header({ onAsk, path, onNavigate, onSearchText, onSearchImage, o
               value={query}
               onChange={(e) => setQuery(e.target.value)}
             />
+            {color && (
+              <span className="mb-color-chip">
+                <span className="mb-color-dot" style={{ background: color }} aria-hidden="true" />
+                {color}
+                <button
+                  type="button"
+                  aria-label="Clear color"
+                  onClick={() => {
+                    setColor(null);
+                    if (query.trim()) onSearchText(query.trim());
+                  }}
+                >
+                  ×
+                </button>
+              </span>
+            )}
+            <FeatureTip tipId="color" align="end">
+              <label className="mb-search-camera mb-color-picker" title="Search by color">
+                <span className="visually-hidden">Search by color</span>
+                <span
+                  className="mb-color-wheel-icon"
+                  aria-hidden="true"
+                  style={color ? { background: color } : undefined}
+                />
+                <input
+                  type="color"
+                  value={color ?? "#9caf88"}
+                  onChange={(e) => {
+                    // The native picker fires on every drag movement; search once the user pauses.
+                    const hex = e.target.value;
+                    setColor(hex);
+                    window.clearTimeout(colorTimer.current);
+                    colorTimer.current = window.setTimeout(() => onSearchColor(hex, query.trim()), 300);
+                  }}
+                />
+              </label>
+            </FeatureTip>
             <button
               type="button"
               className="mb-search-camera"

@@ -130,6 +130,41 @@
   font-weight: 600;
 }
 
+.mb-swatches {
+  display: flex;
+  gap: 6px;
+}
+
+.mb-swatches .mb-color-dot {
+  width: 20px;
+  height: 20px;
+}
+
+.mb-shop-primary {
+  display: block;
+  padding: 14px 16px;
+  border-radius: var(--mb-radius-pill);
+  background: var(--mb-surface-muted);
+  color: var(--mb-ink);
+  font-weight: 600;
+  text-align: center;
+  text-decoration: none;
+}
+
+.mb-shop-primary:hover {
+  background: var(--mb-surface-hover);
+}
+
+.mb-shop-note {
+  margin: 6px 4px 0;
+  color: var(--mb-ink-muted);
+  font-size: 0.8rem;
+}
+
+.mb-shop-note a {
+  color: inherit;
+}
+
 .mb-ctl h2 {
   margin: 8px 0 4px;
   font-size: 1.15rem;

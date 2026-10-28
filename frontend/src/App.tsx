@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { api, type BoardAnalysis, type BoardContext, type Item } from "./api/client";
 import { AssistantPanel } from "./components/AssistantPanel";
 import { BoardsPage } from "./components/BoardsPage";
+import { MoodPage } from "./components/MoodPage";
 import { SavesProvider } from "./saves";
 import { BoardAnalyzer } from "./components/BoardAnalyzer";
 import { CloseUp } from "./components/CloseUp";
@@ -12,7 +13,11 @@ import { ItemGrid } from "./components/ItemGrid";
 import { MasonryGrid } from "./components/MasonryGrid";
 import { PageTitle } from "./components/PageTitle";
 
-type Feed = { kind: "browse" } | { kind: "text"; query: string } | { kind: "image"; fileName: string };
+type Feed =
+  | { kind: "browse" }
+  | { kind: "text"; query: string }
+  | { kind: "image"; fileName: string }
+  | { kind: "color"; hex: string; query: string };
 
 type FeedPage = { items: Item[]; total: number; lowRelevance?: boolean };
 
@@ -132,6 +137,12 @@ export default function App() {
       return { items: r.results, total: r.results.length, lowRelevance: r.low_relevance };
     });
 
+  const searchColor = (hex: string, query: string) =>
+    run({ kind: "color", hex, query }, async () => {
+      const r = await api.searchColor(hex, query || undefined);
+      return { items: r.results, total: r.results.length };
+    });
+
   const searchImage = (file: File) =>
     run({ kind: "image", fileName: file.name }, async () => {
       const r = await api.searchImage(file);
@@ -139,7 +150,13 @@ export default function App() {
     });
 
   const title =
-    feed.kind === "text" ? `Results for “${feed.query}”` : feed.kind === "image" ? "Similar to your photo" : "Discover";
+    feed.kind === "text"
+      ? `Results for “${feed.query}”`
+      : feed.kind === "image"
+        ? "Similar to your photo"
+        : feed.kind === "color"
+          ? `Color ${feed.hex}${feed.query ? ` + “${feed.query}”` : ""}`
+          : "Discover";
 
   return (
     <SavesProvider>
@@ -149,11 +166,14 @@ export default function App() {
         onNavigate={navigate}
         onSearchText={searchText}
         onSearchImage={searchImage}
+        onSearchColor={searchColor}
         onHome={() => browse()}
       />
       <main style={{ padding: "8px var(--mb-gutter) 96px" }}>
         {openId ? (
           <CloseUp itemId={openId} board={board} onBack={back} onOpen={open} />
+        ) : path === "/mood" ? (
+          <MoodPage onOpen={openFromFeed} />
         ) : path === "/board" ? (
           <BoardAnalyzer onOpen={openFromBoard} onAnalyzed={setLastAnalysis} />
         ) : path === "/boards" || path.startsWith("/boards/") ? (

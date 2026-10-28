@@ -9,6 +9,30 @@ export interface Item {
   kids: boolean;
   width: number;
   height: number;
+  /** dominant colors (hex), heaviest first */
+  colors?: string[];
+}
+
+export interface ColorMatchItem extends Item {
+  score: number;
+  color_score: number;
+  delta_e: number;
+  matched_color: string;
+  text_score: number | null;
+}
+
+export interface ColorResults {
+  color: string;
+  query: string | null;
+  color_weight: number;
+  results: ColorMatchItem[];
+}
+
+export interface ShopLinks {
+  query: string;
+  color_name: string | null;
+  google_shopping: string;
+  google_lens: string;
 }
 
 export interface ScoredItem extends Item {
@@ -154,6 +178,14 @@ export const api = {
     body.append("image", file);
     return request<SearchResults>(`/search/image?k=${k}`, { method: "POST", body });
   },
+  searchColor: (hex: string, q?: string, k = 50) =>
+    request<ColorResults>(`/search/color?hex=${encodeURIComponent(hex)}&k=${k}${q ? `&q=${encodeURIComponent(q)}` : ""}`),
+  styles: () => request<string[]>("/styles"),
+  mood: (hex: string, style: string, colorWeight = 0.5, k = 40) =>
+    request<ColorResults>(
+      `/mood?hex=${encodeURIComponent(hex)}&style=${encodeURIComponent(style)}&color_weight=${colorWeight}&k=${k}`,
+    ),
+  shopLinks: (itemId: string) => request<ShopLinks>(`/items/${encodeURIComponent(itemId)}/shop-links`),
   completeLook: (itemId: string, board?: BoardContext | null, perGroup = 6) =>
     request<CompleteLook>("/complete-look", {
       method: "POST",

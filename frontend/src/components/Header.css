@@ -110,6 +110,54 @@
   background: var(--mb-surface-hover);
 }
 
+.mb-color-picker {
+  position: relative;
+}
+
+.mb-color-picker input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.mb-color-picker:focus-within {
+  box-shadow: 0 0 0 3px var(--mb-focus);
+}
+
+.mb-color-wheel-icon {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: conic-gradient(#e60023, #f5c400, #3cb44b, #00a5e0, #6a3fa0, #e60023);
+  box-shadow: inset 0 0 0 2px var(--mb-surface);
+}
+
+.mb-color-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 4px 4px 8px;
+  border-radius: var(--mb-radius-pill);
+  background: var(--mb-surface);
+  color: var(--mb-ink);
+  font-size: 0.85rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.mb-color-chip button {
+  width: 22px;
+  height: 22px;
+  border: 0;
+  border-radius: 50%;
+  background: var(--mb-surface-muted);
+  color: var(--mb-ink);
+  cursor: pointer;
+}
+
 .mb-search-field:focus-within {
   box-shadow: 0 0 0 4px var(--mb-focus);
 }

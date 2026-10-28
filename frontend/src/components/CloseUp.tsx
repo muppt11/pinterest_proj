@@ -2,6 +2,7 @@ import { useContext, useEffect, useRef, useState } from "react";
 import { SavesContextOptional } from "../saves";
 import { altText, api, imageSrc, type BoardContext, type Item, type ScoredItem } from "../api/client";
 import { CompleteTheLook } from "./CompleteTheLook";
+import { ShopSimilar } from "./ShopSimilar";
 import { FeatureTip } from "./FeatureTip";
 import { ItemGrid } from "./ItemGrid";
 import "./CloseUp.css";
@@ -84,11 +85,22 @@ export function CloseUp({ itemId, board, onBack, onOpen }: CloseUpProps) {
               <dt>Kids' clothing</dt>
               <dd>{item.kids ? "Yes" : "No"}</dd>
             </div>
+            {item.colors && item.colors.length > 0 && (
+              <div>
+                <dt>Main colors</dt>
+                <dd className="mb-swatches">
+                  {item.colors.map((c) => (
+                    <span key={c} className="mb-color-dot" style={{ background: c }} title={c} aria-label={c} role="img" />
+                  ))}
+                </dd>
+              </div>
+            )}
             <div>
               <dt>Source</dt>
               <dd>clothing-dataset (CC0)</dd>
             </div>
           </dl>
+          <ShopSimilar itemId={item.id} />
           <CompleteTheLook itemId={item.id} board={board} onOpen={onOpen} />
         </div>
       </section>

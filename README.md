@@ -55,9 +55,9 @@ _To be written._ The five differentiators:
 | 4 | Assistant (LangGraph + Ollama) | done (live run waits on model download) |
 | 5 | AI labels, review queue, "Fewer AI images" toggle | planned |
 | 6 | Repost detection + original credit, "first seen" date on every item | planned |
-| 7 | Search by color (Lab k-means, Delta E 2000) | planned |
-| 7b | Mood picker: color wheel + aesthetic → curated items | planned |
-| 7c | Shop similar: outbound Google Shopping / Lens links from an item's real attributes | planned |
+| 7 | Search by color (Lab k-means, Delta E 2000) | done |
+| 7b | Mood picker: color wheel + aesthetic → curated items | done |
+| 7c | Shop similar: outbound Google Shopping / Lens links from an item's real attributes | done |
 | 2b | Character style boards: written style profiles of iconic film/TV looks → catalog matches | planned |
 | 8 | Checklist save to multiple boards, nested sub-boards, undo toast | done |
 | 8b | Style-focus filter (Menswear / Womenswear / All) chosen in a first-visit welcome popup; estimated by CLIP zero-shot, labeled "estimated", ambiguous items count as unisex | planned |
@@ -165,6 +165,20 @@ _To be written._ The five differentiators:
 **Alternatives considered.** Pinterest-style "sections" with one level only. Rejected, because the user wish was explicitly "infinite sub-boards." A self-referencing table is just as simple and has no depth limit.
 
 **Limits.** There's a single local user until feature 9 adds lightweight identity. Moving a board under a different parent isn't supported yet, which also means cycles can't happen.
+
+### 7. Search by color
+
+**Problem.** "Search by color" is one of the most-requested wishes in the user thread. People remember outfits as "that sage thing", and color words are fuzzy for both people and CLIP.
+
+**Approach.**
+- At index time, each image's center crop (60%, which skips most floor and wall) is downsampled to 40×40 and clustered with k-means **in CIE Lab**, a color space where distances roughly match perceived differences. 3–5 dominant colors are kept with their area weights.
+- At query time, one vectorized **CIEDE2000** call scores all 5,163 items against the picked color. A small penalty for low-coverage colors stops a yellow button from making a navy shirt count as "yellow."
+- Typing words alongside a color (sage + "linen") blends a normalized CLIP text score in at 40%.
+- Every result carries its Delta E and the matched swatch, so the ranking can be explained.
+
+**Why CIEDE2000 instead of RGB distance.** RGB distance overstates differences in blues and understates them in greens. CIEDE2000 is the industry standard for perceived difference. My implementation is checked against 12 published reference pairs from Sharma et al. (2005) to 4 decimal places.
+
+**Measured by.** Feature 10: the mean Delta E of the top 20 results versus random items.
 
 ### Mood picker (7b)
 

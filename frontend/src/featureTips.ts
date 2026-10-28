@@ -17,6 +17,24 @@ export const FEATURE_TIPS: FeatureTipContent[] = [
     why: "Describing a look in words or showing an example is faster than browsing categories.",
   },
   {
+    id: "color",
+    title: "Search by color",
+    how: "Tap the rainbow dot in the search bar and pick a color. Add words like “linen” to blend color with a description.",
+    why: "People remember outfits by color more than by name, and a picked color is more precise than typing “sage”.",
+  },
+  {
+    id: "mood",
+    title: "Mood picker",
+    how: "Drag on the color wheel, pick an aesthetic chip, and use the slider to lean toward color or style.",
+    why: "For when you know the feeling you want but not the words for it. Two taps turn a mood into a starting board.",
+  },
+  {
+    id: "shop",
+    title: "Shop similar",
+    how: "On any item, tap Shop similar to search Google Shopping for that color and type of piece.",
+    why: "The catalog isn't a store, so this hands you off to real shopping results without MoodBoards inventing prices.",
+  },
+  {
     id: "more-like-this",
     title: "More like this",
     how: "Open any item to see the closest matches in the catalog. Tap one to keep exploring.",
@@ -54,6 +72,20 @@ export const FEATURE_TIPS: FeatureTipContent[] = [
   },
 ];
 
+/** Short intro shown once on first visit and at the top of the help menu. */
+export const INTRO = {
+  sentence:
+    "MoodBoards helps you discover outfits and build boards from a clothing catalog: search however you think, save what you love, and ask for ideas.",
+  bullets: [
+    "Search by words, by photo (camera), or by color (rainbow dot)",
+    "Open any item for More like this, Complete the look, and Shop similar",
+    "Save to several boards at once, nest boards inside boards, and Undo any save",
+    "Analyze board: drop in your outfit photos to find their distinct aesthetics",
+    "Mood picker: pick a color and an aesthetic for a curated grid",
+    "Ask: chat with a style assistant that only shows real catalog items",
+  ],
+};
+
 const STORAGE_KEY = "mb-dismissed-tips";
 
 /** Read dismissed tip ids. Storage can be unavailable (private mode), so failures mean "none dismissed". */
@@ -66,6 +98,7 @@ export function getDismissedTips(): Set<string> {
 }
 
 export function dismissTip(id: string): void {
+  sessionDismissed.add(id);
   try {
     const dismissed = getDismissedTips();
     dismissed.add(id);
@@ -73,7 +106,51 @@ export function dismissTip(id: string): void {
   } catch {
     // Non-critical: the tip will just show again next visit.
   }
+  notify();
 }
+
+// --- One tip at a time -------------------------------------------------------------------------
+// Tips register while their feature is on screen. Only one shows at once: the first undismissed,
+// on-screen tip in FEATURE_TIPS order, and only after the welcome card has been dismissed.
+
+export const WELCOME_ID = "welcome";
+const mounted = new Set<string>();
+const sessionDismissed = new Set<string>(); // keeps working when localStorage is unavailable
+const listeners = new Set<() => void>();
+let version = 0;
+
+function notify() {
+  version += 1;
+  listeners.forEach((l) => l());
+}
+
+export const tipStore = {
+  subscribe(listener: () => void) {
+    listeners.add(listener);
+    return () => listeners.delete(listener);
+  },
+  getVersion: () => version,
+  register(id: string) {
+    mounted.add(id);
+    notify();
+    return () => {
+      mounted.delete(id);
+      notify();
+    };
+  },
+  /** Test helper: forget this session's dismissals (localStorage is cleared separately). */
+  resetSession() {
+    sessionDismissed.clear();
+    notify();
+  },
+  /** Which tip (if any) should be showing right now. */
+  active(): string | null {
+    const dismissed = getDismissedTips();
+    const isDismissed = (id: string) => dismissed.has(id) || sessionDismissed.has(id);
+    if (!isDismissed(WELCOME_ID)) return null;
+    return FEATURE_TIPS.find((t) => mounted.has(t.id) && !isDismissed(t.id))?.id ?? null;
+  },
+};
 
 export function getTip(id: string): FeatureTipContent {
   const tip = FEATURE_TIPS.find((t) => t.id === id);

@@ -96,7 +96,34 @@
   list-style: none;
 }
 
-.mb-help-panel li + li {
+.mb-help-panel .mb-intro-list {
+  margin: 6px 0 4px;
+  padding-left: 18px;
+  list-style: disc;
+}
+
+.mb-help-panel .mb-intro-list li {
+  margin: 4px 0;
+  padding: 0;
+  border: 0;
+}
+
+.mb-help-features {
+  margin-top: 16px !important;
+  padding-top: 12px;
+  border-top: 1px solid var(--mb-border);
+}
+
+.mb-welcome-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 8px;
+  color: var(--mb-ink-muted);
+  font-size: 0.8rem;
+}
+
+.mb-help-panel > ul > li + li {
   margin-top: 12px;
   padding-top: 12px;
   border-top: 1px solid var(--mb-border);
