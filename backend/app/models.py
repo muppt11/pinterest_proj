@@ -67,12 +67,14 @@ class ColorResults(BaseModel):
 
 
 class ShopLinks(BaseModel):
-    """Outbound search links built only from the item's real attributes. MoodBoards verifies nothing there."""
+    """Outbound search links built from the item's photo or real attributes. MoodBoards verifies nothing there."""
 
     query: str
+    query_source: str  # "vision model" (described from the photo) or "color + category" (fallback)
     color_name: str | None
     google_shopping: str
     google_lens: str
+    google_images: str  # paste the copied photo here for a visual match
 
 
 class StyleTag(BaseModel):

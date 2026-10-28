@@ -78,18 +78,30 @@ describe("MoodPage", () => {
 describe("ShopSimilar", () => {
   it("links out to Google Shopping in a new tab with a truthful query", async () => {
     routes({
-      "/api/items/a/shop-links": {
+      "/api/items/a/shop-links?detailed=false": {
         query: "sage green shirt",
+        query_source: "color + category",
         color_name: "sage green",
         google_shopping: "https://www.google.com/search?tbm=shop&q=sage+green+shirt",
         google_lens: "https://lens.google.com/",
+        google_images: "https://www.google.com/imghp",
+      },
+      "/api/items/a/shop-links?detailed=true": {
+        query: "sage green linen button-up shirt",
+        query_source: "vision model",
+        color_name: "sage green",
+        google_shopping: "https://www.google.com/search?tbm=shop&q=sage+green+linen+button-up+shirt",
+        google_lens: "https://lens.google.com/",
+        google_images: "https://www.google.com/imghp",
       },
     });
-    render(<ShopSimilar itemId="a" />);
-    const link = await screen.findByRole("link", { name: /Shop similar: “sage green shirt”/ });
-    expect(link).toHaveAttribute("href", "https://www.google.com/search?tbm=shop&q=sage+green+shirt");
+    render(<ShopSimilar itemId="a" imageUrl="/api/images/a.jpg" />);
+    // Upgrades from the instant color+category query to the vision model's specific one.
+    const link = await screen.findByRole("link", { name: /Shop similar: “sage green linen button-up shirt”/ });
+    expect(link).toHaveAttribute("href", "https://www.google.com/search?tbm=shop&q=sage+green+linen+button-up+shirt");
+    expect(screen.getByRole("button", { name: "Copy image + search Google by photo" })).toBeInTheDocument();
     expect(link).toHaveAttribute("target", "_blank");
     expect(link).toHaveAttribute("rel", "noopener noreferrer");
-    expect(screen.getByText(/aren't checked by MoodBoards/)).toBeInTheDocument();
+    expect(screen.getByText(/written from the photo by the local vision model/)).toBeInTheDocument();
   });
 });

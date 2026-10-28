@@ -6,7 +6,7 @@ from urllib.parse import quote_plus
 import numpy as np
 from fastapi import APIRouter, Depends, HTTPException, Query
 
-from app.deps import FocusFilter, get_catalog, get_embedder, get_focus
+from app.deps import FocusFilter, get_catalog, get_describer, get_embedder, get_focus
 from app.models import ColorMatchItem, ColorResults, Item, ShopLinks
 from app.services.board import STYLE_WORDS
 from app.services.catalog import Catalog
@@ -103,18 +103,32 @@ def mood(
 
 
 @router.get("/items/{item_id}/shop-links", response_model=ShopLinks)
-def shop_links(item_id: str, catalog: CatalogDep) -> ShopLinks:
-    """Google Shopping / Lens links for finding something similar to buy. Built only from the item's
-    real category, kids flag, and extracted main color; MoodBoards shows no prices or stores itself."""
+def shop_links(
+    item_id: str,
+    catalog: CatalogDep,
+    describer: Annotated[object, Depends(get_describer)],
+    detailed: bool = True,
+) -> ShopLinks:
+    """Links for finding something similar to buy. With `detailed`, the local vision model writes a
+    specific query from the photo (pattern, material, cut); otherwise, or if the model is unavailable,
+    the query is the item's extracted main color + category. MoodBoards shows no prices or stores."""
     meta = catalog.get(item_id)
     if meta is None:
         raise HTTPException(status_code=404, detail="Item not found.")
     name = color_name(np.array(meta["colors"][0]["lab"])) if meta.get("colors") else None
-    words = [w for w in ("kids" if meta["kids"] else None, name, SHOP_TERMS.get(meta["category"], meta["category"].lower())) if w]
-    query = " ".join(words)
+    vision_query = describer.shopping_query(meta) if detailed and hasattr(describer, "shopping_query") else None
+    if vision_query:
+        query = f"kids {vision_query}" if meta["kids"] and "kid" not in vision_query.lower() else vision_query
+        source = "vision model"
+    else:
+        words = [w for w in ("kids" if meta["kids"] else None, name, SHOP_TERMS.get(meta["category"], meta["category"].lower())) if w]
+        query = " ".join(words)
+        source = "color + category"
     return ShopLinks(
         query=query,
+        query_source=source,
         color_name=name,
         google_shopping=f"https://www.google.com/search?tbm=shop&q={quote_plus(query)}",
         google_lens="https://lens.google.com/",
+        google_images="https://www.google.com/imghp",
     )

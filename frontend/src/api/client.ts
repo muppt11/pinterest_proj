@@ -85,9 +85,11 @@ export const profileApi = {
 
 export interface ShopLinks {
   query: string;
+  query_source: "vision model" | "color + category";
   color_name: string | null;
   google_shopping: string;
   google_lens: string;
+  google_images: string;
 }
 
 export interface ScoredItem extends Item {
@@ -249,7 +251,8 @@ export const api = {
     request<ColorResults>(
       `/mood?hex=${encodeURIComponent(hex)}&style=${encodeURIComponent(style)}&color_weight=${colorWeight}&k=${k}`,
     ),
-  shopLinks: (itemId: string) => request<ShopLinks>(`/items/${encodeURIComponent(itemId)}/shop-links`),
+  shopLinks: (itemId: string, detailed = true) =>
+    request<ShopLinks>(`/items/${encodeURIComponent(itemId)}/shop-links?detailed=${detailed}`),
   completeLook: (itemId: string, board?: BoardContext | null, perGroup = 6) =>
     request<CompleteLook>("/complete-look", {
       method: "POST",

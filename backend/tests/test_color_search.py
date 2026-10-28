@@ -7,7 +7,7 @@ import numpy as np
 import pytest
 from fastapi.testclient import TestClient
 
-from app.deps import get_catalog, get_embedder
+from app.deps import get_catalog, get_describer, get_embedder
 from app.main import app
 from app.services.catalog import Catalog
 from app.services.color import rgb_to_lab
@@ -82,6 +82,7 @@ def client(color_catalog: Catalog) -> Iterator[TestClient]:
 
     app.dependency_overrides[get_catalog] = lambda: color_catalog
     app.dependency_overrides[get_embedder] = TextEmbedder
+    app.dependency_overrides[get_describer] = lambda: object()  # no vision model: fallback queries
     yield TestClient(app)
     app.dependency_overrides.clear()
 
@@ -107,8 +108,30 @@ def test_mood_endpoint(client: TestClient) -> None:
 def test_shop_links_use_only_real_attributes(client: TestClient) -> None:
     body = client.get("/items/sage-shirt/shop-links").json()
     assert body["query"] == "sage green shirt" and body["color_name"] == "sage green"
+    assert body["query_source"] == "color + category" and body["google_images"].startswith("https://www.google.com/")
     url = urlparse(body["google_shopping"])
     assert url.netloc == "www.google.com" and parse_qs(url.query) == {"tbm": ["shop"], "q": ["sage green shirt"]}
     assert client.get("/items/kids-sage/shop-links").json()["query"] == "kids sage green hoodie"
     assert client.get("/items/no-colors/shop-links").json()["query"] == "clothing"
     assert client.get("/items/nope/shop-links").status_code == 404
+
+
+def test_shop_links_prefer_vision_query(client: TestClient) -> None:
+    class Describer:
+        def shopping_query(self, item: dict) -> str:  # type: ignore[type-arg]
+            return "sage green linen relaxed button-up shirt"
+
+    app.dependency_overrides[get_describer] = Describer
+    body = client.get("/items/sage-shirt/shop-links").json()
+    assert body["query"] == "sage green linen relaxed button-up shirt" and body["query_source"] == "vision model"
+    assert client.get("/items/kids-sage/shop-links").json()["query"].startswith("kids ")
+    fallback = client.get("/items/sage-shirt/shop-links", params={"detailed": False}).json()
+    assert fallback["query_source"] == "color + category"
+
+
+def test_clean_query() -> None:
+    from app.agent.vision import clean_query
+
+    assert clean_query('Query: "Burgundy ribbed knit top $25"\nextra') == "Burgundy ribbed knit top"
+    assert clean_query("   ") is None
+    assert len(clean_query("a " * 30).split()) == 10  # type: ignore[union-attr]

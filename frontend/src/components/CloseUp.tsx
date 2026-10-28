@@ -100,7 +100,7 @@ export function CloseUp({ itemId, board, onBack, onOpen }: CloseUpProps) {
               <dd>clothing-dataset (CC0)</dd>
             </div>
           </dl>
-          <ShopSimilar itemId={item.id} />
+          <ShopSimilar itemId={item.id} imageUrl={imageSrc(item)} />
           <CompleteTheLook itemId={item.id} board={board} onOpen={onOpen} />
         </div>
       </section>
