@@ -14,6 +14,7 @@ class Item(BaseModel):
     kids: bool
     width: int
     height: int
+    colors: list[str] = []  # dominant colors (hex), heaviest first, extracted from the image at index time
 
     @classmethod
     def from_meta(cls, meta: dict[str, Any]) -> "Item":
@@ -24,6 +25,7 @@ class Item(BaseModel):
             kids=meta["kids"],
             width=meta["width"],
             height=meta["height"],
+            colors=[c["hex"] for c in meta.get("colors", [])[:3]],
         )
 
 
@@ -45,6 +47,32 @@ class SearchResults(BaseModel):
     # True when even the best matches are weak, e.g. a non-clothing query against a clothing-only catalog.
     # Results are still returned (closest items) so the UI can offer them behind an explanation.
     low_relevance: bool = False
+
+
+class ColorMatchItem(Item):
+    """A color/mood search result, with the evidence for its rank."""
+
+    score: float  # combined 0..1
+    color_score: float  # 0..1
+    delta_e: float  # CIEDE2000 to the picked color (lower = closer), incl. small-coverage penalty
+    matched_color: str  # which of the item's dominant colors matched
+    text_score: float | None = None  # 0..1, when a text or style was given
+
+
+class ColorResults(BaseModel):
+    color: str
+    query: str | None
+    color_weight: float
+    results: list[ColorMatchItem]
+
+
+class ShopLinks(BaseModel):
+    """Outbound search links built only from the item's real attributes. MoodBoards verifies nothing there."""
+
+    query: str
+    color_name: str | None
+    google_shopping: str
+    google_lens: str
 
 
 class StyleTag(BaseModel):
