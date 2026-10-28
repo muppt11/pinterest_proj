@@ -1,4 +1,5 @@
 import { FeatureTip } from "./FeatureTip";
+import { ThemeToggle } from "./ThemeToggle";
 import "./Header.css";
 
 /** Top bar: logo + wordmark on the left, pill search field filling the rest (wired up in feature 1). */
@@ -29,6 +30,7 @@ export function Header() {
           </div>
         </FeatureTip>
       </form>
+      <ThemeToggle />
     </header>
   );
 }
