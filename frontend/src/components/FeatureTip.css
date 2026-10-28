@@ -15,10 +15,17 @@
 .mb-tip {
   position: absolute;
   top: calc(100% + 10px);
-  left: 0;
   z-index: 20;
   width: min(320px, calc(100vw - 2 * var(--mb-gutter)));
   padding: 14px 16px;
+}
+
+.mb-tip-start {
+  left: 0;
+}
+
+.mb-tip-end {
+  right: 0;
 }
 
 .mb-tip p,

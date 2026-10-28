@@ -2,15 +2,14 @@ export type Theme = "light" | "dark";
 
 const STORAGE_KEY = "mb-theme";
 
-/** The user's saved choice, else the OS preference. Storage can be unavailable, so fall back quietly. */
+/** The user's saved choice, else light. Storage can be unavailable, so fall back quietly. */
 export function initialTheme(): Theme {
   try {
-    const saved = localStorage.getItem(STORAGE_KEY);
-    if (saved === "light" || saved === "dark") return saved;
+    if (localStorage.getItem(STORAGE_KEY) === "dark") return "dark";
   } catch {
     // ignore
   }
-  return window.matchMedia?.("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+  return "light";
 }
 
 export function applyTheme(theme: Theme): void {

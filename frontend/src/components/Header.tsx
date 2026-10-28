@@ -30,7 +30,9 @@ export function Header() {
           </div>
         </FeatureTip>
       </form>
-      <ThemeToggle />
+      <FeatureTip tipId="theme" align="end">
+        <ThemeToggle />
+      </FeatureTip>
     </header>
   );
 }

@@ -16,6 +16,12 @@ export const FEATURE_TIPS: FeatureTipContent[] = [
     how: "Type a description like \"sage green linen\" or drop in a photo to find similar items.",
     why: "Describing a look in words or showing an example is faster than browsing categories.",
   },
+  {
+    id: "theme",
+    title: "Light or dark mode",
+    how: "Use the moon / sun button in the top-right corner to switch. Your choice is remembered.",
+    why: "Dark mode is easier on the eyes at night and makes bright outfit photos stand out.",
+  },
 ];
 
 const STORAGE_KEY = "mb-dismissed-tips";

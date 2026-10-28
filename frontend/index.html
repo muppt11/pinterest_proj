@@ -6,10 +6,9 @@
     <link rel="icon" type="image/svg+xml" href="/logo.svg" />
     <title>MoodBoards</title>
     <script>
-      // Apply the saved theme before first paint to avoid a light/dark flash.
+      // Light by default; apply a saved dark choice before first paint to avoid a flash.
       try {
-        const t = localStorage.getItem("mb-theme");
-        if (t === "light" || t === "dark") document.documentElement.dataset.theme = t;
+        if (localStorage.getItem("mb-theme") === "dark") document.documentElement.dataset.theme = "dark";
       } catch {}
     </script>
   </head>
