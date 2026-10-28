@@ -110,6 +110,49 @@
   font-weight: 600;
 }
 
+.mb-ctl h2 {
+  margin: 8px 0 4px;
+  font-size: 1.15rem;
+}
+
+.mb-ctl-note {
+  margin: 0 0 8px;
+  color: var(--mb-ink-muted);
+  font-size: 0.9rem;
+}
+
+.mb-ctl-group h3 {
+  margin: 12px 0 6px;
+  font-size: 0.95rem;
+}
+
+.mb-ctl-group ul {
+  display: flex;
+  gap: 8px;
+  margin: 0;
+  padding: 0 0 4px;
+  overflow-x: auto;
+  list-style: none;
+}
+
+.mb-ctl-group button {
+  display: block;
+  padding: 0;
+  border: 0;
+  border-radius: 12px;
+  background: none;
+  cursor: zoom-in;
+}
+
+.mb-ctl-group img {
+  display: block;
+  width: 80px;
+  height: 104px;
+  object-fit: cover;
+  border-radius: 12px;
+  background: var(--mb-surface-accent);
+}
+
 .mb-closeup-more h2 {
   margin: 0 0 12px;
   font-size: 1.15rem;

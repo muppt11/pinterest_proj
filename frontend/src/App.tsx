@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { api, type Item } from "./api/client";
+import { api, type BoardContext, type Item } from "./api/client";
 import { BoardAnalyzer } from "./components/BoardAnalyzer";
 import { CloseUp } from "./components/CloseUp";
 import { Header } from "./components/Header";
@@ -25,6 +25,7 @@ export default function App() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [path, setPath] = useState(window.location.pathname);
+  const [board, setBoard] = useState<BoardContext | null>(null);
   const sentinel = useRef<HTMLDivElement>(null);
   const openId = itemIdFromPath(path);
 
@@ -91,7 +92,17 @@ export default function App() {
     return () => observer.disconnect();
   }, [loadMore]);
 
+  // Opening from a board aesthetic carries its taste into the close-up; opening from the feed clears it;
+  // browsing within a close-up (More like this, Complete the look) keeps whatever is set.
   const open = (item: Item) => navigate(`/item/${encodeURIComponent(item.id)}`);
+  const openFromFeed = (item: Item) => {
+    setBoard(null);
+    open(item);
+  };
+  const openFromBoard = (item: Item, context: BoardContext) => {
+    setBoard(context);
+    open(item);
+  };
 
   function back() {
     if (window.history.length > 1) window.history.back();
@@ -124,9 +135,9 @@ export default function App() {
       />
       <main style={{ padding: "8px var(--mb-gutter) 96px" }}>
         {openId ? (
-          <CloseUp itemId={openId} onBack={back} onOpen={open} />
+          <CloseUp itemId={openId} board={board} onBack={back} onOpen={open} />
         ) : path === "/board" ? (
-          <BoardAnalyzer onOpen={open} />
+          <BoardAnalyzer onOpen={openFromBoard} />
         ) : (
           <>
             <PageTitle>{title}</PageTitle>
@@ -139,7 +150,7 @@ export default function App() {
               <p className="mb-notice">No matches. Try different words or another photo.</p>
             )}
             {items.length > 0 ? (
-              <ItemGrid items={items} label={title} onOpen={open} />
+              <ItemGrid items={items} label={title} onOpen={openFromFeed} />
             ) : (
               loading && (
                 <MasonryGrid

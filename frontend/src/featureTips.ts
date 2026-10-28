@@ -23,6 +23,12 @@ export const FEATURE_TIPS: FeatureTipContent[] = [
     why: "Browsing from an item you already like is the quickest way to narrow down a look.",
   },
   {
+    id: "complete-look",
+    title: "Complete the look",
+    how: "Open any item to see bottoms, shoes, outerwear, and more that share its style. Opened from a board? The picks also match that board's aesthetic.",
+    why: "Finding the one piece you love is half the job. Building a whole outfit around it is where people get stuck.",
+  },
+  {
     id: "board",
     title: "Analyze a board",
     how: "Drop in 3–20 outfit photos you love. MoodBoards finds the distinct looks in them and matching items for each.",

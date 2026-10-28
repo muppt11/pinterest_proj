@@ -48,6 +48,7 @@ async def analyze_board(
                 image_indices=[int(i) for i in np.flatnonzero(clustering.labels == j)],
                 style_tags=[StyleTag(word=w, score=round(s, 4)) for w, s in style_tags(centroid, words)],
                 results=_scored(hits),
+                centroid=[round(float(v), 6) for v in centroid],
             )
         )
     return BoardAnalysis(

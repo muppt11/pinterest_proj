@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { api, type BoardAnalysis, type Item } from "../api/client";
+import { api, type BoardAnalysis, type BoardContext, type Item } from "../api/client";
 import { FeatureTip } from "./FeatureTip";
 import { ItemGrid } from "./ItemGrid";
 import { PageTitle } from "./PageTitle";
@@ -10,7 +10,7 @@ const MAX_IMAGES = 20;
 const ACCEPT = ["image/jpeg", "image/png", "image/webp"];
 
 /** Upload a board (3–20 outfit photos) and see its distinct aesthetics with matching catalog items. */
-export function BoardAnalyzer({ onOpen }: { onOpen: (item: Item) => void }) {
+export function BoardAnalyzer({ onOpen }: { onOpen: (item: Item, board: BoardContext) => void }) {
   const [files, setFiles] = useState<File[]>([]);
   const [analysis, setAnalysis] = useState<BoardAnalysis | null>(null);
   const [busy, setBusy] = useState(false);
@@ -123,7 +123,11 @@ export function BoardAnalyzer({ onOpen }: { onOpen: (item: Item) => void }) {
                   ))}
                 </ul>
               </header>
-              <ItemGrid items={a.results} label={`Catalog matches for aesthetic ${a.index + 1}`} onOpen={onOpen} />
+              <ItemGrid
+                items={a.results}
+                label={`Catalog matches for aesthetic ${a.index + 1}`}
+                onOpen={(item) => onOpen(item, { label: `Aesthetic ${a.index + 1}`, centroid: a.centroid })}
+              />
             </article>
           ))}
         </section>

@@ -56,11 +56,23 @@ describe("App", () => {
       "/api/items?": { items: [item("a")], total: 1, offset: 0 },
       "/api/items/a/similar": { query: null, results: [{ ...item("b", "Dress"), score: 0.9 }] },
       "/api/items/a": item("a"),
+      "/api/complete-look": {
+        item_id: "a",
+        anchor_group: "shoes",
+        used_board: false,
+        groups: [
+          { group: "bottoms", results: [{ ...item("p", "Pants"), score: 0.7 }] },
+          { group: "outerwear", results: [] },
+        ],
+      },
     });
     render(<App />);
     fireEvent.click(await screen.findByRole("button", { name: "Open Shoes" }));
     expect(await screen.findByRole("heading", { level: 1, name: "Shoes" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "More like this" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Complete the look" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Bottoms" })).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Outerwear" })).not.toBeInTheDocument(); // empty groups hidden
     await waitFor(() => expect(screen.getByRole("img", { name: "Photo of dress" })).toBeInTheDocument());
     expect(window.location.pathname).toBe("/item/a");
   });

@@ -1,6 +1,7 @@
 """The indexed clothing catalog: FAISS vectors plus per-item metadata."""
 
 import json
+from collections.abc import Collection
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -67,14 +68,19 @@ class Catalog:
         k: int = 20,
         category: str | None = None,
         exclude_ids: set[str] | None = None,
+        categories: Collection[str] | None = None,
+        kids: bool | None = None,
     ) -> list[Hit]:
-        """Top-k items by cosine similarity, optionally restricted to one category.
+        """Top-k items by cosine similarity, optionally restricted by category (one or a set) and kids flag.
 
         With filters we score the whole catalog: at ~5k vectors an exact scan is ~1 ms,
         so there's no need for a pre-filtered index.
         """
         exclude_ids = exclude_ids or set()
-        filtered = category is not None or bool(exclude_ids)
+        allowed = set(categories) if categories is not None else None
+        if category is not None:
+            allowed = {category} if allowed is None else allowed & {category}
+        filtered = allowed is not None or bool(exclude_ids) or kids is not None
         fetch = self.index.ntotal if filtered else min(k, self.index.ntotal)
         scores, rows = self.index.search(query.reshape(1, -1).astype(np.float32), fetch)
 
@@ -83,7 +89,9 @@ class Catalog:
             if row < 0:
                 continue
             item = self.items[row]
-            if category is not None and item["category"] != category:
+            if allowed is not None and item["category"] not in allowed:
+                continue
+            if kids is not None and item["kids"] != kids:
                 continue
             if item["id"] in exclude_ids:
                 continue

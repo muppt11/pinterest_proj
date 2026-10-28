@@ -31,6 +31,20 @@ export interface Aesthetic {
   image_indices: number[];
   style_tags: { word: string; score: number }[];
   results: ScoredItem[];
+  centroid: number[];
+}
+
+/** A board aesthetic carried into the close-up so Complete the look can match it. */
+export interface BoardContext {
+  label: string;
+  centroid: number[];
+}
+
+export interface CompleteLook {
+  item_id: string;
+  anchor_group: string | null;
+  used_board: boolean;
+  groups: { group: string; results: ScoredItem[] }[];
 }
 
 export interface BoardAnalysis {
@@ -78,6 +92,12 @@ export const api = {
     body.append("image", file);
     return request<SearchResults>(`/search/image?k=${k}`, { method: "POST", body });
   },
+  completeLook: (itemId: string, board?: BoardContext | null, perGroup = 6) =>
+    request<CompleteLook>("/complete-look", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ item_id: itemId, centroid: board?.centroid ?? null, per_group: perGroup }),
+    }),
   analyzeBoard: (files: File[], k = 12) => {
     const body = new FormData();
     files.forEach((f) => body.append("images", f));

@@ -1,11 +1,13 @@
 import { useEffect, useRef, useState } from "react";
-import { altText, api, imageSrc, type Item, type ScoredItem } from "../api/client";
+import { altText, api, imageSrc, type BoardContext, type Item, type ScoredItem } from "../api/client";
+import { CompleteTheLook } from "./CompleteTheLook";
 import { FeatureTip } from "./FeatureTip";
 import { ItemGrid } from "./ItemGrid";
 import "./CloseUp.css";
 
 interface CloseUpProps {
   itemId: string;
+  board: BoardContext | null;
   onBack: () => void;
   onOpen: (item: Item) => void;
 }
@@ -14,7 +16,7 @@ interface CloseUpProps {
 const sideColumns = (width: number) => (width >= 1200 ? 3 : width >= 640 ? 3 : 2);
 
 /** Item close-up: large image panel with details, and "More like this" next to it. */
-export function CloseUp({ itemId, onBack, onOpen }: CloseUpProps) {
+export function CloseUp({ itemId, board, onBack, onOpen }: CloseUpProps) {
   const [item, setItem] = useState<Item | null>(null);
   const [similar, setSimilar] = useState<ScoredItem[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -73,6 +75,7 @@ export function CloseUp({ itemId, onBack, onOpen }: CloseUpProps) {
               <dd>clothing-dataset (CC0)</dd>
             </div>
           </dl>
+          <CompleteTheLook itemId={item.id} board={board} onOpen={onOpen} />
         </div>
       </section>
       <section className="mb-closeup-more" aria-labelledby="more-like-this">
