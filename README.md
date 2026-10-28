@@ -57,6 +57,8 @@ _To be written._ The five differentiators:
 | 6 | Repost detection + original credit, "first seen" date on every item | planned |
 | 7 | Search by color (Lab k-means, Delta E 2000) | planned |
 | 7b | Mood picker: color wheel + aesthetic → curated items | planned |
+| 7c | Shop similar: outbound Google Shopping / Lens links from an item's real attributes | planned |
+| 2b | Character style boards: written style profiles of iconic film/TV looks → catalog matches | planned |
 | 8 | Checklist save to multiple boards, nested sub-boards, undo toast | planned |
 | 9 | Group trip outfit planning (stretch) | planned |
 | 10 | Evals | planned |
@@ -138,6 +140,41 @@ _To be written._ The five differentiators:
 - The mean Delta E of the top 20 results should be lower than for random items.
 - The style match of the top 20 should be higher than for a color-only ranking.
 
+### Shop similar (7c)
+
+**What it does.** On an item's close-up, a "Shop similar" button opens Google Shopping in a new tab. The search query is built only from the item's real data: its dominant color's name and its category, for example "burgundy t-shirt". A second link opens Google Lens, where you can drop in the image yourself.
+
+**Why it's here.** The catalog is an open dataset with no stores or prices, but finding something you can actually buy is the natural next step after "I love this."
+
+**Why not show results inside the app.**
+- Google has no free official API for Lens or Shopping results.
+- Scraping Google breaks its terms and this project's no-scraping rule.
+- Paid APIs break the no-paid-APIs rule.
+- Catalog images live on localhost, which Google can't fetch.
+
+So MoodBoards hands off to Google with a transparent query and never displays prices, stores, or availability it hasn't verified. The button says where it goes ("Opens Google Shopping in a new tab") and that results aren't checked by MoodBoards.
+
+**Alternatives considered.**
+- Google Cloud Vision Web Detection: paid after the free tier, and it needs an API key and a public image URL.
+- SerpAPI: paid.
+- Retailer affiliate feeds: out of scope, and they bring commercial terms.
+
+### Character style boards (2b)
+
+**What it does.** Pick an iconic film or TV character and get a board of catalog items in their signature style, built with the same pipeline as board analysis.
+
+**How it works.**
+- Each character is a short *written* style profile, labeled as an editorial interpretation. For example: "inspired by a 90s sitcom fashion icon: plaid mini skirts, fitted cardigans, knee-high socks."
+- The profile's phrases are embedded with the CLIP text encoder and averaged into a style vector. Catalog items are ranked against it.
+- The board shows which phrases each item matched best, so the match can be explained.
+
+**What it deliberately doesn't do.**
+- It shows no film stills, promo images, or photos of actors. Those are copyrighted, and using actors' likenesses raises right-of-publicity issues.
+- The boards don't imply any studio endorsement.
+- The profiles describe costume *style* in general terms. They aren't claims about specific garments, brands, or prices.
+
+**Alternatives considered.** Embedding film stills. Rejected for the licensing reasons above, and because a still mixes the costume with lighting, set, and the actor.
+
 Design rules decided up front:
 
 - **Provenance before privacy stripping.** Uploads have their C2PA/IPTC provenance and EXIF `DateTimeOriginal` read and stored *before* any re-encoding or GPS removal. A test checks that a C2PA-signed upload keeps its label afterwards.
@@ -197,7 +234,22 @@ _Pulled from [LEARNING_LOG.md](LEARNING_LOG.md), in my own words._
 
 ## 10. Limitations and next steps
 
-_To be written._
+### What I'd build with access to Pinterest's platform
+
+Some features are built here in a reduced but honest form, because the full version needs data or partnerships only Pinterest has. If I had that access, here's what each would become:
+
+| Feature | What this demo does | With Pinterest's platform |
+|---|---|---|
+| Shop similar (7c) | Opens Google Shopping or Lens in a new tab with a query built from the item's color and category | In-app shoppable results from Pinterest's product catalog and merchant feeds, with real prices and stock, ranked by the same visual embedding |
+| Complete the look (3) | Uses shared style in embedding space as a stand-in for "goes together" | A compatibility model trained on scene Pins where items are worn together, as in Pinterest's Complete the Look research |
+| Character style boards (2b) | Written style profiles, no images | Licensed stills or official costume boards through studio partnerships, plus creator-made "get the look" Pins |
+| "First seen" dates (6) | EXIF capture date or ingestion time, labeled with which one was used | Real Pin creation times and repin lineage, which make repost credit far more reliable |
+| AI labels (5) | Reads C2PA and IPTC metadata on images I supply | Labels applied at upload across all Pins, plus Pinterest's own classifier signals feeding the review queue |
+| Board analysis (2) | 3–20 uploaded images | Users' existing boards, sections, and engagement history |
+
+### Current limitations
+
+_To be written as features land._
 
 ## 11. Sources
 

@@ -6,6 +6,10 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+# faiss-cpu and torch each bundle their own libomp on macOS. If faiss's copy loads first, building the
+# open_clip model segfaults; loading torch's first is safe. This is the only module that imports faiss.
+import torch  # noqa: F401  (import order matters, see above)
+
 import faiss
 import numpy as np
 
