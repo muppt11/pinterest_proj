@@ -60,6 +60,7 @@ _To be written._ The five differentiators:
 | 7c | Shop similar: outbound Google Shopping / Lens links from an item's real attributes | planned |
 | 2b | Character style boards: written style profiles of iconic film/TV looks → catalog matches | planned |
 | 8 | Checklist save to multiple boards, nested sub-boards, undo toast | planned |
+| 8b | Style-focus filter (Menswear / Womenswear / All) chosen in a first-visit welcome popup; estimated by CLIP zero-shot, labeled "estimated", ambiguous items count as unisex | planned |
 | 9 | Group trip outfit planning (stretch) | planned |
 | 10 | Evals | planned |
 
@@ -123,6 +124,32 @@ _To be written._ The five differentiators:
 **Alternatives considered.** Training a compatibility model on Polyvore outfits. Rejected for now: the license is unclear and it's out of scope for a laptop demo.
 
 **Measured by.** Rule checks in feature 10: no same-role suggestions, no kids/adult mixing, and the board blend should raise suggestions' similarity to the board centroid.
+
+### 4. Style assistant
+
+**Problem.** Some needs are questions, not queries: "what shoes would finish this look?" or "compare these two jackets." Chat assistants are also known to invent products.
+
+**Approach.**
+- An explicit LangGraph `StateGraph`: an `agent` node (qwen3:8b through Ollama, thinking mode off), a `tools` node, and a loop between them capped at 4 tool rounds.
+- Four tools: `search_similar`, `complete_look`, `compare_items` (which adds a one-sentence visual description from the local qwen2.5vl vision model) and `describe_board`.
+- The answer streams to the browser as Server-Sent Events: tool calls, tool results, tokens, then a final `done` event.
+
+**Guardrail against invented products.**
+- The model must cite products as `[item:ID]`.
+- Every tool writes the IDs it returned into a per-turn ledger. After the model answers, `validate_answer` keeps only citations found in that ledger and strips everything else.
+- Unit tests check that an invented ID is stripped, and also that a *real* catalog ID the model never looked up this turn is stripped.
+- The UI renders cards only from the validated list, so a hallucinated product can't reach the screen even when its ID happens to exist.
+
+**Graceful edges.**
+- An off-topic request gets a short "I only help with outfits" reply, and no tools run.
+- An empty or weak search returns `results: []` with a note, so the model says it found nothing instead of reaching for weak matches.
+- If the model is unreachable, the UI shows "Is Ollama running?"
+
+**Alternatives considered.**
+- LangGraph's prebuilt ReAct agent. Rejected: an explicit graph makes the loop limit and the grounding step visible and testable.
+- Asking the model for JSON output. Rejected: small local models break JSON more often than they break a simple citation marker.
+
+**Measured by.** Feature 10's 15 test prompts check that tools were called, that every cited ID exists, and that no items were invented.
 
 ### Mood picker (7b)
 

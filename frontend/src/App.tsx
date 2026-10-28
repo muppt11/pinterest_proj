@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { api, type BoardContext, type Item } from "./api/client";
+import { api, type BoardAnalysis, type BoardContext, type Item } from "./api/client";
+import { AssistantPanel } from "./components/AssistantPanel";
 import { BoardAnalyzer } from "./components/BoardAnalyzer";
 import { CloseUp } from "./components/CloseUp";
 import { Header } from "./components/Header";
@@ -31,6 +32,8 @@ export default function App() {
   // Weak text matches (e.g. "birthday cake" against a clothing catalog) are hidden behind an explanation.
   const [lowRelevance, setLowRelevance] = useState(false);
   const [showWeak, setShowWeak] = useState(false);
+  const [assistantOpen, setAssistantOpen] = useState(false);
+  const [lastAnalysis, setLastAnalysis] = useState<BoardAnalysis | null>(null);
   const sentinel = useRef<HTMLDivElement>(null);
   const openId = itemIdFromPath(path);
 
@@ -135,6 +138,7 @@ export default function App() {
   return (
     <>
       <Header
+        onAsk={() => setAssistantOpen(true)}
         path={path}
         onNavigate={navigate}
         onSearchText={searchText}
@@ -145,7 +149,7 @@ export default function App() {
         {openId ? (
           <CloseUp itemId={openId} board={board} onBack={back} onOpen={open} />
         ) : path === "/board" ? (
-          <BoardAnalyzer onOpen={openFromBoard} />
+          <BoardAnalyzer onOpen={openFromBoard} onAnalyzed={setLastAnalysis} />
         ) : (
           <>
             <PageTitle>{title}</PageTitle>
@@ -191,6 +195,21 @@ export default function App() {
           </>
         )}
       </main>
+      <AssistantPanel
+        open={assistantOpen}
+        onClose={() => setAssistantOpen(false)}
+        onOpenItem={open}
+        contextItemIds={openId ? [openId] : []}
+        board={
+          lastAnalysis
+            ? lastAnalysis.aesthetics.map((a) => ({
+                label: `Aesthetic ${a.index + 1}`,
+                style_tags: a.style_tags.map((t) => t.word),
+                centroid: a.centroid,
+              }))
+            : null
+        }
+      />
       <HelpMenu />
     </>
   );

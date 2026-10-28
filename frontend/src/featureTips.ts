@@ -35,6 +35,12 @@ export const FEATURE_TIPS: FeatureTipContent[] = [
     why: "Most boards mix more than one style. Averaging them gives bland picks, so each look gets its own recommendations.",
   },
   {
+    id: "assistant",
+    title: "Style assistant",
+    how: "Tap Ask and chat: “what shoes would finish this look?” or “compare these two jackets”. It sees the item you have open and your analyzed board.",
+    why: "Some questions are easier to ask than to search. Every item it shows comes from a live catalog search, so it can't make products up.",
+  },
+  {
     id: "theme",
     title: "Light or dark mode",
     how: "Use the moon / sun button in the top-right corner to switch. Your choice is remembered.",

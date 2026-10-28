@@ -10,7 +10,13 @@ const MAX_IMAGES = 20;
 const ACCEPT = ["image/jpeg", "image/png", "image/webp"];
 
 /** Upload a board (3–20 outfit photos) and see its distinct aesthetics with matching catalog items. */
-export function BoardAnalyzer({ onOpen }: { onOpen: (item: Item, board: BoardContext) => void }) {
+interface BoardAnalyzerProps {
+  onOpen: (item: Item, board: BoardContext) => void;
+  /** Reports each new analysis so the assistant can use it as context. */
+  onAnalyzed?: (analysis: BoardAnalysis) => void;
+}
+
+export function BoardAnalyzer({ onOpen, onAnalyzed }: BoardAnalyzerProps) {
   const [files, setFiles] = useState<File[]>([]);
   const [analysis, setAnalysis] = useState<BoardAnalysis | null>(null);
   const [busy, setBusy] = useState(false);
@@ -38,7 +44,9 @@ export function BoardAnalyzer({ onOpen }: { onOpen: (item: Item, board: BoardCon
     setBusy(true);
     setError(null);
     try {
-      setAnalysis(await api.analyzeBoard(files));
+      const result = await api.analyzeBoard(files);
+      setAnalysis(result);
+      onAnalyzed?.(result);
     } catch (e) {
       setError((e as Error).message);
     } finally {

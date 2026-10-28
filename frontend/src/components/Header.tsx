@@ -4,6 +4,7 @@ import { ThemeToggle } from "./ThemeToggle";
 import "./Header.css";
 
 interface HeaderProps {
+  onAsk: () => void;
   path: string;
   onNavigate: (to: string) => void;
   onSearchText: (query: string) => void;
@@ -17,7 +18,7 @@ const NAV = [
 ];
 
 /** Top bar: logo + wordmark, nav tabs, pill search field with photo search, and the theme toggle. */
-export function Header({ path, onNavigate, onSearchText, onSearchImage, onHome }: HeaderProps) {
+export function Header({ onAsk, path, onNavigate, onSearchText, onSearchImage, onHome }: HeaderProps) {
   const [query, setQuery] = useState("");
   const fileInput = useRef<HTMLInputElement>(null);
 
@@ -112,6 +113,17 @@ export function Header({ path, onNavigate, onSearchText, onSearchImage, onHome }
           </div>
         </FeatureTip>
       </form>
+      <FeatureTip tipId="assistant" align="end">
+        <button type="button" className="mb-ask-button" onClick={onAsk}>
+          <svg aria-hidden="true" viewBox="0 0 24 24" width="18" height="18">
+            <path
+              d="M12 3l1.9 4.6L18.5 9.5 13.9 11.4 12 16l-1.9-4.6L5.5 9.5l4.6-1.9zM18 15l.9 2.1L21 18l-2.1.9L18 21l-.9-2.1L15 18l2.1-.9z"
+              fill="currentColor"
+            />
+          </svg>
+          Ask
+        </button>
+      </FeatureTip>
       <FeatureTip tipId="theme" align="end">
         <ThemeToggle />
       </FeatureTip>

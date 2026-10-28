@@ -48,6 +48,21 @@
   color: var(--mb-bg);
 }
 
+.mb-ask-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 48px;
+  padding: 0 16px;
+  border: 0;
+  border-radius: var(--mb-radius-pill);
+  background: var(--mb-selected);
+  color: var(--mb-bg);
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
 .mb-search {
   flex: 1;
   min-width: 0;

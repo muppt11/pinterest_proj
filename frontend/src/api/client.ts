@@ -80,6 +80,29 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   return response.json() as Promise<T>;
 }
 
+export interface ChatTurn {
+  role: "user" | "assistant";
+  content: string;
+}
+
+export interface AssistantRequest {
+  message: string;
+  history: ChatTurn[];
+  context_item_ids: string[];
+  board: { label: string; style_tags: string[]; centroid: number[] }[] | null;
+}
+
+export async function startAssistantChat(body: AssistantRequest, signal?: AbortSignal): Promise<Response> {
+  const response = await fetch(`${BASE}/assistant/chat`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+    signal,
+  });
+  if (!response.ok) throw new ApiError(response.status, response.statusText);
+  return response;
+}
+
 export const imageSrc = (item: Item) => `${BASE}${item.image_url}`;
 
 export const altText = (item: Item) => `Photo of ${item.kids ? "kids' " : ""}${item.category.toLowerCase()}`;
