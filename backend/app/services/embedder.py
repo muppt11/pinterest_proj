@@ -62,3 +62,58 @@ class FashionClipEmbedder:
         with self._torch.no_grad():
             features = self.model.encode_text(tokens)
         return _normalize(features.float().cpu().numpy())
+
+
+# --- Out-of-process embedding ------------------------------------------------------------------
+# On macOS, faiss-cpu and torch each bundle their own OpenMP runtime (libomp). Once both are
+# initialized in one process, OpenMP aborts ("OMP: Error #15"); its only escape hatch is an
+# officially unsafe flag that may silently produce wrong results. So the model runs in a separate
+# worker process: the API process holds FAISS, the worker holds torch, and they never share a runtime.
+# This module must not import faiss, because the worker imports it.
+
+_worker: FashionClipEmbedder | None = None
+
+
+def _init_worker(local_dir: Path | None) -> None:
+    global _worker
+    _worker = FashionClipEmbedder(local_dir)
+
+
+def _worker_dim() -> int:
+    assert _worker is not None
+    return _worker.dim
+
+
+def _worker_embed_images(images: list[Image.Image]) -> np.ndarray:
+    assert _worker is not None
+    return _worker.embed_images(images)
+
+
+def _worker_embed_texts(texts: list[str]) -> np.ndarray:
+    assert _worker is not None
+    return _worker.embed_texts(texts)
+
+
+class ProcessEmbedder:
+    """FashionCLIP running in one dedicated worker process (spawned, so it starts clean)."""
+
+    def __init__(self, local_dir: Path | None = None) -> None:
+        import multiprocessing
+        from concurrent.futures import ProcessPoolExecutor
+
+        self._pool = ProcessPoolExecutor(
+            max_workers=1,
+            mp_context=multiprocessing.get_context("spawn"),
+            initializer=_init_worker,
+            initargs=(local_dir,),
+        )
+        self.dim: int = self._pool.submit(_worker_dim).result()  # waits for the model to load
+
+    def embed_images(self, images: list[Image.Image]) -> np.ndarray:
+        return self._pool.submit(_worker_embed_images, [img.convert("RGB") for img in images]).result()
+
+    def embed_texts(self, texts: list[str]) -> np.ndarray:
+        return self._pool.submit(_worker_embed_texts, texts).result()
+
+    def close(self) -> None:
+        self._pool.shutdown()

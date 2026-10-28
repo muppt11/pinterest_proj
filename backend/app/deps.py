@@ -6,7 +6,7 @@ from fastapi import HTTPException
 
 from app.config import get_settings
 from app.services.catalog import Catalog
-from app.services.embedder import Embedder, FashionClipEmbedder
+from app.services.embedder import Embedder, ProcessEmbedder
 
 
 @lru_cache
@@ -24,5 +24,5 @@ def get_catalog() -> Catalog:
 
 @lru_cache
 def get_embedder() -> Embedder:
-    """The FashionCLIP model, loaded once on first use (takes a few seconds)."""
-    return FashionClipEmbedder(get_settings().model_dir)
+    """The FashionCLIP model in its own worker process, started on first use (takes a few seconds)."""
+    return ProcessEmbedder(get_settings().model_dir)

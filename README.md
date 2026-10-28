@@ -49,9 +49,9 @@ _To be written._ The five differentiators:
 | # | Feature | Status |
 |---|---|---|
 | 0 | Scaffolding (FastAPI, React + Vite, Makefile, tests) | done |
-| 1 | Indexing + image/text search | planned |
-| 2 | Board analysis (k-means, k by silhouette score) | planned |
-| 3 | Complete the look | planned |
+| 1 | Indexing + image/text search | done |
+| 2 | Board analysis (k-means, k by silhouette score) | done |
+| 3 | Complete the look | done |
 | 4 | Assistant (LangGraph + Ollama) | planned |
 | 5 | AI labels, review queue, "Fewer AI images" toggle | planned |
 | 6 | Repost detection + original credit, "first seen" date on every item | planned |
@@ -77,6 +77,8 @@ _To be written._ The five differentiators:
 - At about 5k items, exact search takes about a millisecond, so an approximate index (IVF or HNSW) would add recall loss and tuning for no benefit.
 - Filtered searches (category, kids) simply scan everything and filter.
 - I'd switch to IVF-PQ or HNSW above roughly 1M items.
+
+**Model in its own process.** On macOS, `faiss-cpu` and PyTorch each bundle their own OpenMP runtime. With both in one process, building the model segfaulted, and the server later aborted with OpenMP's "Error #15". OpenMP's only escape hatch, `KMP_DUPLICATE_LIB_OK`, is documented as unsafe: it can silently return wrong results, which a search engine can't afford. So FashionCLIP runs in one spawned worker process and the API process keeps FAISS. They exchange images and vectors, and the two runtimes never meet. This mirrors how production systems split model serving from the vector index. On real data, the first query takes about 2.7 s while the model loads, and later queries take about 10 ms end to end.
 
 **Alternatives considered.**
 - General OpenAI CLIP. Rejected: FashionCLIP is trained on product images and attributes, which matches this domain better.
@@ -249,7 +251,9 @@ Some features are built here in a reduced but honest form, because the full vers
 
 ### Current limitations
 
-_To be written as features land._
+- **Board-split thresholds are loose on real data.** In a first end-to-end run, 4 shoe and 4 dress photos split cleanly. But 6 random T-shirts were also split into 2 "aesthetics" (silhouette 0.19), because FashionCLIP vectors for clothing all sit fairly close together. Feature 10's evals will tune both thresholds on real boards.
+- **Category labels are coarse.** "denim jacket" returns blazers and shirts because the dataset has no denim or jacket-type labels. Retrieval is by image style only.
+- **Card titles are category names** ("T-Shirt"), because the dataset has no product names, and the app doesn't invent them.
 
 ## 11. Sources
 

@@ -20,9 +20,8 @@ REPO = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO / "backend"))
 
 from app.config import get_settings  # noqa: E402
-from app.services.catalog import Catalog  # noqa: E402
 from app.services.color import dominant_colors  # noqa: E402
-from app.services.embedder import FashionClipEmbedder  # noqa: E402
+from app.services.embedder import ProcessEmbedder  # noqa: E402
 
 # Dataset labels that mean "not a usable clothing photo", per the dataset's own annotation scheme.
 EXCLUDED_LABELS = {"Skip", "Not sure"}
@@ -48,8 +47,8 @@ def main() -> None:
         sys.exit("Dataset not found. Run: python scripts/download_dataset.py")
 
     rows = load_rows(dataset_dir)[: args.limit]
-    embedder = FashionClipEmbedder(settings.model_dir)
-    print(f"Embedding {len(rows)} images on {embedder.device} (dim={embedder.dim})")
+    embedder = ProcessEmbedder(settings.model_dir)  # torch in a worker; this process uses faiss
+    print(f"Embedding {len(rows)} images (dim={embedder.dim})")
 
     items: list[dict] = []
     vectors: list[np.ndarray] = []
@@ -77,6 +76,11 @@ def main() -> None:
         done = min(i + BATCH, len(rows))
         print(f"\r  {done}/{len(rows)}  ({done / (time.time() - start):.0f} img/s)", end="", flush=True)
     print()
+
+    embedder.close()
+    # Imported here, not at the top: the spawned embedding worker re-imports this script,
+    # and faiss must never load in the torch process (see ProcessEmbedder).
+    from app.services.catalog import Catalog
 
     catalog = Catalog.from_vectors(np.concatenate(vectors), items)
     catalog.save(settings.index_dir)
