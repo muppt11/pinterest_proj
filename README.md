@@ -402,7 +402,22 @@ Planned additions (features 4–9): LangGraph agent with Ollama, SQLite for boar
 
 ## 7. Security and privacy
 
-_Summary of [THREAT_MODEL.md](THREAT_MODEL.md): features 5 and 9._
+Full details, with the test that covers each mitigation: [THREAT_MODEL.md](THREAT_MODEL.md).
+
+- **Uploads:**
+  - 10 MB limit, JPEG/PNG/WebP only, and a 40-megapixel cap against decompression bombs.
+  - **GPS is stripped** before any further use, but *after* reading provenance and the capture date, so labels and repost credit survive.
+  - Search and board uploads are processed in memory and never stored. Trip inspiration keeps only embeddings and colors.
+- **Sign-up:**
+  - No passwords. A random 256-bit token sits in an HttpOnly, SameSite=Lax cookie, and only its SHA-256 hash is stored.
+  - Production would use real authentication.
+- **Trip links:**
+  - Invite links use 192-bit tokens, stored hashed, revocable and expiring. Revoked, expired and unknown links all fail the same way.
+  - Non-members get 404, so private trips can't be discovered.
+  - Invites and publishing are rate limited.
+- **Public trip pages:** they show the plan only: no names, emails or IDs. Unpublishing makes the page 404.
+- **XSS:** all user text is stored and rendered as plain text, which React escapes, with nothing set as raw HTML. Names are cleaned and every field has a length limit.
+- **AI-written notes:** always labeled "AI suggestion", with a prompt that forbids prices, opening hours and bookings.
 
 ## 8. How I used AI tools and how I validated their output
 
