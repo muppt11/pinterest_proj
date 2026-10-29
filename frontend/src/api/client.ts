@@ -291,6 +291,7 @@ export const api = {
     request<ColorResults>(
       `/mood?hex=${encodeURIComponent(hex)}&style=${encodeURIComponent(style)}&color_weight=${colorWeight}&k=${k}`,
     ),
+  lensUrl: (itemId: string) => request<{ url: string }>(`/items/${encodeURIComponent(itemId)}/lens`, { method: "POST" }),
   shopLinks: (itemId: string, detailed = true) =>
     request<ShopLinks>(`/items/${encodeURIComponent(itemId)}/shop-links?detailed=${detailed}`),
   completeLook: (itemId: string, board?: BoardContext | null, perGroup = 6) =>

@@ -6,12 +6,14 @@ from urllib.parse import quote_plus
 import numpy as np
 from fastapi import APIRouter, Depends, HTTPException, Query
 
+from app.config import get_settings
 from app.deps import FocusFilter, get_catalog, get_describer, get_embedder, get_focus
 from app.models import ColorMatchItem, ColorResults, Item, ShopLinks
 from app.services.aesthetics import STYLE_WORDS, bank_for, phrases_for
 from app.services.catalog import Catalog
 from app.services.color_search import ColorHit, color_index, color_name, color_search
 from app.services.embedder import Embedder
+from app.services.lens import lens_results_url
 
 router = APIRouter(tags=["color"])
 
@@ -95,6 +97,18 @@ def mood(
     scores = bank_for(embedder).score(catalog.matrix, phrases_for([style]))
     hits = color_search(catalog, color_index(catalog), hex, k, None, color_weight, allowed=focus.mask, style=scores, focus_boost=_boost(focus))
     return ColorResults(color=_hex(hex), query=style, color_weight=color_weight, results=_results(catalog, hits))
+
+
+@router.post("/items/{item_id}/lens")
+def lens_search(item_id: str, catalog: CatalogDep) -> dict:
+    """Search Google Lens with this item's photo; returns the results URL to open in a new tab."""
+    meta = catalog.get(item_id)
+    if meta is None:
+        raise HTTPException(status_code=404, detail="Item not found.")
+    try:
+        return {"url": lens_results_url(get_settings().images_dir / meta["image_file"])}
+    except (RuntimeError, OSError) as exc:
+        raise HTTPException(status_code=502, detail="Couldn't reach Google Lens.") from exc
 
 
 @router.get("/items/{item_id}/shop-links", response_model=ShopLinks)

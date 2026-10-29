@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import App from "../App";
 import { hslToHex, MoodPage, wheelPoint } from "../components/MoodPage";
 import { searchLensWithImage, ShopSimilar } from "../components/ShopSimilar";
@@ -90,8 +90,10 @@ describe("searchLensWithImage", () => {
     vi.stubGlobal("DataTransfer", FakeDataTransfer);
     let submitted: HTMLFormElement | null = null;
     let fileName = "";
+    let policyAtSubmit: string | null = null;
     vi.spyOn(HTMLFormElement.prototype, "submit").mockImplementation(function (this: HTMLFormElement) {
       submitted = this;
+      policyAtSubmit = document.querySelector('meta[name="referrer"]')?.getAttribute("content") ?? null;
       fileName = (this.querySelector("input") as HTMLInputElement & { files: File[] }).files[0].name;
     });
     Object.defineProperty(HTMLInputElement.prototype, "files", { configurable: true, writable: true, value: null });
@@ -105,6 +107,25 @@ describe("searchLensWithImage", () => {
     expect(form.action).toMatch(/^https:\/\/lens\.google\.com\/v3\/upload\?/);
     expect(form.target).toBe("mb-lens");
     expect(fileName).toBe("item.jpg");
+    // Sent with no referrer, so the browser's Origin header is "null", which Google accepts.
+    expect(policyAtSubmit).toBe("no-referrer");
+    open.mockRestore();
+  });
+});
+
+describe("Shop this exact look", () => {
+  it("opens Google's visual results for the photo via the server upload", async () => {
+    const tab = { opener: {}, location: { href: "" } };
+    const open = vi.spyOn(window, "open").mockReturnValue(tab as unknown as Window);
+    routes({
+      "/api/items/a/shop-links": { query: "q", query_source: "color + category", color_name: null, google_shopping: "https://www.google.com/search?tbm=shop&q=q", google_lens: "", google_images: "" },
+      "/api/items/a/lens": { url: "https://www.google.com/search?vsrid=abc&udm=26" },
+    });
+    render(<ShopSimilar itemId="a" imageUrl="/api/images/a.jpg" />);
+    fireEvent.click(screen.getByRole("button", { name: /Shop this exact look with Google Lens/ }));
+    await waitFor(() => expect(tab.location.href).toBe("https://www.google.com/search?vsrid=abc&udm=26"));
+    expect(open).toHaveBeenCalledWith("", "mb-lens");
+    expect(tab.opener).toBeNull();
     open.mockRestore();
   });
 });

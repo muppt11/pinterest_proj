@@ -23,6 +23,10 @@ export const LENS_UPLOAD_URL = "https://lens.google.com/v3/upload";
  * click so it isn't blocked as a pop-up, then POST the image there as a multipart form, the same way
  * the browser's own "Search image with Google" does. Google answers with its visual search results.
  * This upload endpoint isn't officially documented, so callers keep a copy-and-paste fallback.
+ *
+ * Google rejects uploads that carry a real Origin header (tested: any site origin -> 403/400, none or
+ * "null" -> results). Browsers send `Origin: null` for a form POST when the page's referrer policy is
+ * "no-referrer", so that policy is set just for the submit and then restored.
  */
 export async function searchLensWithImage(imageUrl: string): Promise<void> {
   const tab = window.open("", "mb-lens");
@@ -43,8 +47,17 @@ export async function searchLensWithImage(imageUrl: string): Promise<void> {
   input.files = files.files;
   form.appendChild(input);
   document.body.appendChild(form);
-  form.submit();
-  form.remove();
+  const meta = document.createElement("meta");
+  meta.name = "referrer";
+  meta.content = "no-referrer";
+  document.head.appendChild(meta);
+  try {
+    form.submit();
+  } finally {
+    form.remove();
+    // Restore the default policy for everything else on the page.
+    window.setTimeout(() => meta.remove(), 0);
+  }
 }
 
 /**
@@ -73,6 +86,22 @@ export function ShopSimilar({ itemId, imageUrl }: { itemId: string; imageUrl: st
   }, [itemId]);
 
   async function openLens() {
+    // 1) Our server uploads the photo (no Origin header, which Google requires) and we open the results.
+    const tab = window.open("", "mb-lens"); // inside the click, so it isn't blocked as a pop-up
+    try {
+      const { url } = await api.lensUrl(itemId);
+      if (tab) {
+        tab.opener = null;
+        tab.location.href = url;
+      } else {
+        window.open(url, "_blank", "noopener");
+      }
+      setCopyState("idle");
+      return;
+    } catch {
+      // fall through to the in-browser upload
+    }
+    // 2) Upload straight from the browser; 3) copy the photo for pasting.
     try {
       await searchLensWithImage(imageUrl);
       setCopyState("idle");
