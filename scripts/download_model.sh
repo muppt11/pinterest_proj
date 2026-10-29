@@ -13,7 +13,8 @@ SHA256="2bd31a2e6ba195c4890941f61ea6ada9dbf242f9c6e5ee27eec8cf13a2dc9ffe"
 mkdir -p "$DEST"
 curl -fsSL --retry 5 -o "$DEST/open_clip_config.json" "$BASE/open_clip_config.json"
 
-verified() { [ -f "$DEST/$WEIGHTS" ] && [ "$(shasum -a 256 "$DEST/$WEIGHTS" | cut -d' ' -f1)" = "$SHA256" ]; }
+sha256_of() { if command -v sha256sum >/dev/null; then sha256sum "$1"; else shasum -a 256 "$1"; fi | cut -d' ' -f1; }
+verified() { [ -f "$DEST/$WEIGHTS" ] && [ "$(sha256_of "$DEST/$WEIGHTS")" = "$SHA256" ]; }
 
 if verified; then
   echo "Model already downloaded and verified: $DEST"

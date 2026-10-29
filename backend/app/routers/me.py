@@ -12,6 +12,7 @@ from typing import Annotated, Literal
 from fastapi import APIRouter, Cookie, Depends, HTTPException, Query, Response
 from pydantic import BaseModel, Field, field_validator
 
+from app.config import get_settings
 from app.db import get_db
 from app.deps import FocusFilter, get_catalog, get_embedder, get_focus
 from app.models import Item
@@ -115,7 +116,9 @@ def sign_up(body: SignUp, response: Response, db: Db, user: UserDep) -> Me:
         return _me(db.execute("SELECT * FROM users WHERE id = ?", (user["id"],)).fetchone())
     token = secrets.token_urlsafe(32)
     db.execute("INSERT INTO users (token_sha256, display_name) VALUES (?, ?)", (_hash(token), name))
-    response.set_cookie(COOKIE, token, max_age=COOKIE_MAX_AGE, httponly=True, samesite="lax", path="/")
+    response.set_cookie(
+        COOKIE, token, max_age=COOKIE_MAX_AGE, httponly=True, samesite="lax", path="/", secure=get_settings().secure_cookies
+    )
     return Me(display_name=name, prefs=PrefsIn())
 
 

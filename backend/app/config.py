@@ -22,6 +22,7 @@ class Settings(BaseSettings):
     ollama_host: str = "http://localhost:11434"
     agent_model: str = "qwen3:8b"
     vision_model: str = "qwen2.5vl:7b"
+    secure_cookies: bool = False  # set MOODBOARDS_SECURE_COOKIES=1 when served over HTTPS (e.g. Hugging Face Spaces)
 
     @property
     def index_dir(self) -> Path:

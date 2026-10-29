@@ -1,7 +1,7 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import App from "../App";
 import { hslToHex, MoodPage, wheelPoint } from "../components/MoodPage";
-import { isPublicOrigin, lensUrlFor, ShopSimilar } from "../components/ShopSimilar";
+import { searchLensWithImage, ShopSimilar } from "../components/ShopSimilar";
 
 const item = (id: string, category: string) => ({ id, category, image_url: `/images/${id}.jpg`, kids: false, width: 4, height: 5, colors: ["#9caf88"] });
 const match = (id: string, category: string) => ({ ...item(id, category), score: 0.8, color_score: 0.8, delta_e: 7.8, matched_color: "#a1b18c", text_score: null });
@@ -75,6 +75,40 @@ describe("MoodPage", () => {
   });
 });
 
+describe("searchLensWithImage", () => {
+  it("opens a tab inside the click and POSTs the image file itself to Lens", async () => {
+    const tab = { opener: {} };
+    const open = vi.spyOn(window, "open").mockReturnValue(tab as unknown as Window);
+    vi.stubGlobal("fetch", vi.fn(async () => new Response(new Blob(["jpegbytes"], { type: "image/jpeg" }))));
+    class FakeDataTransfer {
+      private list: File[] = [];
+      items = { add: (f: File) => this.list.push(f) };
+      get files() {
+        return this.list as unknown as FileList;
+      }
+    }
+    vi.stubGlobal("DataTransfer", FakeDataTransfer);
+    let submitted: HTMLFormElement | null = null;
+    let fileName = "";
+    vi.spyOn(HTMLFormElement.prototype, "submit").mockImplementation(function (this: HTMLFormElement) {
+      submitted = this;
+      fileName = (this.querySelector("input") as HTMLInputElement & { files: File[] }).files[0].name;
+    });
+    Object.defineProperty(HTMLInputElement.prototype, "files", { configurable: true, writable: true, value: null });
+
+    await searchLensWithImage("/api/images/a.jpg");
+    expect(open).toHaveBeenCalledWith("", "mb-lens");
+    expect(tab.opener).toBeNull();
+    const form = submitted as unknown as HTMLFormElement;
+    expect(form.method.toLowerCase()).toBe("post");
+    expect(form.enctype).toBe("multipart/form-data");
+    expect(form.action).toMatch(/^https:\/\/lens\.google\.com\/v3\/upload\?/);
+    expect(form.target).toBe("mb-lens");
+    expect(fileName).toBe("item.jpg");
+    open.mockRestore();
+  });
+});
+
 describe("ShopSimilar", () => {
   it("searches by the photo first (Lens), with a keyword search as the fallback", async () => {
     routes({
@@ -88,20 +122,11 @@ describe("ShopSimilar", () => {
       },
     });
     render(<ShopSimilar itemId="a" imageUrl="/api/images/a.jpg" />);
-    // jsdom runs on localhost, so the photo is copied for pasting rather than linked.
-    expect(screen.getByRole("button", { name: "Shop this exact look with Google Lens" })).toBeInTheDocument();
-    expect(screen.getByText(/copies it for you to paste into Lens/)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Shop this exact look with Google Lens/ })).toBeInTheDocument();
+    expect(screen.getByText(/Sends this photo itself to Google Lens/)).toBeInTheDocument();
     const words = await screen.findByRole("link", { name: /Or search by words: “sage green shirt”/ });
     expect(words).toHaveAttribute("target", "_blank");
     expect(words).toHaveAttribute("rel", "noopener noreferrer");
   });
 
-  it("links straight to Lens with the image URL on a public deployment", () => {
-    expect(isPublicOrigin("localhost")).toBe(false);
-    expect(isPublicOrigin("192.168.1.20")).toBe(false);
-    expect(isPublicOrigin("moodboards.hf.space")).toBe(true);
-    expect(lensUrlFor("https://moodboards.hf.space/api/images/a.jpg")).toBe(
-      "https://lens.google.com/uploadbyurl?url=https%3A%2F%2Fmoodboards.hf.space%2Fapi%2Fimages%2Fa.jpg",
-    );
-  });
 });

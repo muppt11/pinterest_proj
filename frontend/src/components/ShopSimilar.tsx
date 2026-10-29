@@ -16,25 +16,44 @@ async function copyImage(url: string): Promise<void> {
   await navigator.clipboard.write([new ClipboardItem({ "image/png": png })]);
 }
 
-/** Google can only fetch images from a public address, not from localhost or a private network. */
-export function isPublicOrigin(hostname: string): boolean {
-  return !/^(localhost|127\.|0\.0\.0\.0|10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.|\[?::1\]?$)/.test(hostname);
-}
+export const LENS_UPLOAD_URL = "https://lens.google.com/v3/upload";
 
-export function lensUrlFor(absoluteImageUrl: string): string {
-  return `https://lens.google.com/uploadbyurl?url=${encodeURIComponent(absoluteImageUrl)}`;
+/**
+ * Search Google Lens with the image file itself (works on localhost too): open a named tab inside the
+ * click so it isn't blocked as a pop-up, then POST the image there as a multipart form, the same way
+ * the browser's own "Search image with Google" does. Google answers with its visual search results.
+ * This upload endpoint isn't officially documented, so callers keep a copy-and-paste fallback.
+ */
+export async function searchLensWithImage(imageUrl: string): Promise<void> {
+  const tab = window.open("", "mb-lens");
+  if (tab) tab.opener = null;
+  const blob = await (await fetch(imageUrl)).blob();
+  const file = new File([blob], "item.jpg", { type: blob.type || "image/jpeg" });
+  const form = document.createElement("form");
+  form.method = "POST";
+  form.enctype = "multipart/form-data";
+  form.action = `${LENS_UPLOAD_URL}?ep=gsbubb&st=${Date.now()}`;
+  form.target = "mb-lens";
+  form.style.display = "none";
+  const input = document.createElement("input");
+  input.type = "file";
+  input.name = "encoded_image";
+  const files = new DataTransfer();
+  files.items.add(file);
+  input.files = files.files;
+  form.appendChild(input);
+  document.body.appendChild(form);
+  form.submit();
+  form.remove();
 }
 
 /**
  * Shop similar, image first: Google Lens searches with the photo itself, so results look as close as
- * possible. On a public deployment Lens fetches the image directly; locally we copy the photo for pasting.
- * A keyword search is offered as the fallback. MoodBoards shows no prices or stores itself.
+ * possible; a keyword search is offered as the fallback. MoodBoards shows no prices or stores itself.
  */
 export function ShopSimilar({ itemId, imageUrl }: { itemId: string; imageUrl: string }) {
   const [links, setLinks] = useState<ShopLinks | null>(null);
   const [copyState, setCopyState] = useState<"idle" | "copied" | "failed">("idle");
-  const absolute = new URL(imageUrl, window.location.href).href;
-  const direct = isPublicOrigin(window.location.hostname);
 
   useEffect(() => {
     let cancelled = false;
@@ -53,38 +72,36 @@ export function ShopSimilar({ itemId, imageUrl }: { itemId: string; imageUrl: st
     };
   }, [itemId]);
 
-  async function copyAndOpenLens() {
-    window.open("https://lens.google.com/", "_blank", "noopener"); // open inside the click so it isn't blocked
+  async function openLens() {
     try {
-      await copyImage(imageUrl);
-      setCopyState("copied");
+      await searchLensWithImage(imageUrl);
+      setCopyState("idle");
     } catch {
-      setCopyState("failed");
+      // Fallback: copy the photo so it can be pasted into Lens by hand.
+      window.open("https://lens.google.com/", "_blank", "noopener");
+      try {
+        await copyImage(imageUrl);
+        setCopyState("copied");
+      } catch {
+        setCopyState("failed");
+      }
     }
   }
 
   return (
     <div className="mb-shop">
       <FeatureTip tipId="shop">
-        {direct ? (
-          <a className="mb-shop-primary" href={lensUrlFor(absolute)} target="_blank" rel="noopener noreferrer">
-            Shop this exact look with Google Lens
-            <span className="visually-hidden"> (searches with the photo, opens in a new tab)</span>
-          </a>
-        ) : (
-          <button type="button" className="mb-shop-primary" onClick={copyAndOpenLens}>
-            Shop this exact look with Google Lens
-          </button>
-        )}
+        <button type="button" className="mb-shop-primary" onClick={openLens}>
+          Shop this exact look with Google Lens
+          <span className="visually-hidden"> (searches Google with this photo, opens in a new tab)</span>
+        </button>
       </FeatureTip>
       <p className="mb-shop-note" aria-live="polite">
-        {direct
-          ? "Searches Google with this photo itself, not keywords, for the closest visual matches."
-          : copyState === "copied"
-            ? "Photo copied. In the Google Lens tab, press ⌘V (Ctrl+V) to search with it."
-            : copyState === "failed"
-              ? "Your browser blocked copying. Right-click the photo, choose Copy Image, then paste it into Google Lens."
-              : "Running locally, so Google can't fetch the photo directly: this copies it for you to paste into Lens."}
+        {copyState === "copied"
+          ? "Couldn't send the photo automatically, so it's copied: press ⌘V (Ctrl+V) in the Google Lens tab."
+          : copyState === "failed"
+            ? "Your browser blocked it. Right-click the photo, choose Copy Image, then paste it into Google Lens."
+            : "Sends this photo itself to Google Lens (not keywords) for the closest visual matches."}
       </p>
       {links && (
         <a className="mb-shop-secondary" href={links.google_shopping} target="_blank" rel="noopener noreferrer">
