@@ -61,6 +61,8 @@ class SearchResults(BaseModel):
     # True when even the best matches are weak, e.g. a non-clothing query against a clothing-only catalog.
     # Results are still returned (closest items) so the UI can offer them behind an explanation.
     low_relevance: bool = False
+    # Text searches: what the query was understood as (categories and color), shown as chips in the UI.
+    understood: list[str] = []
     # For photo searches: set when the uploaded photo is a repost of a catalog image (credit goes to the catalog).
     repost_of: "UploadRepost | None" = None
 

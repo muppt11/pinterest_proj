@@ -15,7 +15,7 @@ from pydantic import BaseModel, Field, field_validator
 from app.db import get_db
 from app.deps import get_catalog, get_embedder
 from app.models import Item
-from app.routers.color import color_index
+from app.services.color_search import color_index
 from app.services.catalog import Catalog
 from app.services.embedder import Embedder
 from app.services.style_focus import FocusIndex

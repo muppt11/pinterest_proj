@@ -10,7 +10,7 @@ from app.deps import FocusFilter, get_catalog, get_describer, get_embedder, get_
 from app.models import ColorMatchItem, ColorResults, Item, ShopLinks
 from app.services.aesthetics import STYLE_WORDS, bank_for, phrases_for
 from app.services.catalog import Catalog
-from app.services.color_search import ColorHit, ColorIndex, color_name, color_search
+from app.services.color_search import ColorHit, color_index, color_name, color_search
 from app.services.embedder import Embedder
 
 router = APIRouter(tags=["color"])
@@ -30,15 +30,6 @@ SHOP_TERMS = {
     "Other": "clothing",
     "T-Shirt": "t-shirt",
 }
-
-
-def color_index(catalog: Catalog) -> ColorIndex:
-    """Built once per loaded catalog and cached on it."""
-    cached = getattr(catalog, "_color_index", None)
-    if cached is None:
-        cached = ColorIndex(catalog)
-        catalog._color_index = cached  # type: ignore[attr-defined]
-    return cached
 
 
 def _results(catalog: Catalog, hits: list[ColorHit]) -> list[ColorMatchItem]:

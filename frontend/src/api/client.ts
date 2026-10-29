@@ -130,6 +130,8 @@ export interface SearchResults {
   results: ScoredItem[];
   /** True when even the best matches are weak (e.g. a non-clothing query). */
   low_relevance?: boolean;
+  /** What a text query was understood as: categories and colors. */
+  understood?: string[];
   /** Photo search: your upload is a repost of this catalog image. */
   repost_of?: { original: Item; reason: string; first_seen: string | null; date_source: string | null } | null;
 }

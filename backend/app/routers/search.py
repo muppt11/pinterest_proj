@@ -2,10 +2,16 @@
 
 from typing import Annotated
 
+import numpy as np
+
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
 
 from app.deps import FocusFilter, get_catalog, get_embedder, get_focus
 from app.models import Item, ItemPage, ScoredItem, SearchResults, UploadRepost
+from app.services.color import rgb_to_lab
+from app.services.color_families import items_in_families
+from app.services.color_search import COLOR_NAMES, color_index
+from app.services.query_parse import ParsedQuery, parse_query
 from app.services.reposts import credit, phash_hex
 from app.services.catalog import Catalog, Hit
 from app.services.embedder import Embedder
@@ -86,10 +92,38 @@ def search_text(
         raise HTTPException(status_code=422, detail="Query can't be blank.")
     _check_category(catalog, category)
     vector = embedder.embed_texts([query])[0]
-    hits = catalog.search(vector, k=max(k, RELEVANCE_WINDOW), category=category, exclude_ids=focus.excluded)
-    window = hits[:RELEVANCE_WINDOW]
+    window = catalog.search(vector, k=RELEVANCE_WINDOW, category=category, exclude_ids=focus.excluded)
     relevance = sum(h.score for h in window) / len(window) if window else 0.0
-    return SearchResults(query=query, results=_scored(hits[:k]), low_relevance=relevance < MIN_TEXT_RELEVANCE)
+
+    # Query understanding: garment words narrow the categories, color words re-rank by perceived color.
+    parsed = parse_query(query)
+    categories = parsed.categories if category is None else None
+    pool = catalog.search(vector, k=max(k * 4, 200), category=category, categories=categories, exclude_ids=focus.excluded)
+    if not pool:  # e.g. the garment word matched no category in this focus; fall back to text only
+        pool = catalog.search(vector, k=max(k * 4, 200), category=category, exclude_ids=focus.excluded)
+        categories = None
+    if parsed.color or parsed.family:
+        pool = _rerank_by_color(catalog, pool, parsed)
+    return SearchResults(
+        query=query,
+        results=_scored(pool[:k]),
+        low_relevance=relevance < MIN_TEXT_RELEVANCE,
+        understood=(sorted(categories) if categories else []) + [w for w in (parsed.color, parsed.family) if w],
+    )
+
+
+def _rerank_by_color(catalog: Catalog, hits: list[Hit], parsed: ParsedQuery) -> list[Hit]:
+    """Blend each hit's text score (rescaled within the pool) with how well its main colors match."""
+    rows = [catalog._row_by_id[h.item["id"]] for h in hits]
+    text = np.array([h.score for h in hits])
+    text = (text - text.min()) / max(float(text.max() - text.min()), 1e-6)
+    if parsed.color:
+        de, _ = color_index(catalog).distances(rgb_to_lab(np.array(COLOR_NAMES[parsed.color])))
+        color = np.clip(1 - de[rows] / 40.0, 0, 1)
+    else:
+        color = items_in_families([catalog.items[r] for r in rows], [parsed.family]).astype(float)  # type: ignore[list-item]
+    combined = 0.5 * text + 0.5 * color
+    return [hits[i] for i in np.argsort(-combined, kind="stable")]
 
 
 @router.post("/search/image", response_model=SearchResults)

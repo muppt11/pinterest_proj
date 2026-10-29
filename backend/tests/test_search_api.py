@@ -99,3 +99,10 @@ def test_missing_index_returns_503() -> None:
         assert TestClient(app).get("/items").status_code == 503
     finally:
         app.dependency_overrides.clear()
+
+
+def test_text_search_understands_garment_and_color_words(client: TestClient) -> None:
+    body = client.get("/search/text", params={"q": "boot", "k": 4}).json()
+    # "boot" -> Shoes only, even though other items exist
+    assert {r["category"] for r in body["results"]} == {"Shoes"}
+    assert body["understood"] == ["Shoes"]

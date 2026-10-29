@@ -71,6 +71,15 @@ class ColorIndex:
         return penalized[np.arange(len(best)), best], best
 
 
+def color_index(catalog: Catalog) -> ColorIndex:
+    """Built once per loaded catalog and cached on it."""
+    cached = getattr(catalog, "_color_index", None)
+    if cached is None:
+        cached = ColorIndex(catalog)
+        catalog._color_index = cached  # type: ignore[attr-defined]
+    return cached
+
+
 def color_search(
     catalog: Catalog,
     index: ColorIndex,

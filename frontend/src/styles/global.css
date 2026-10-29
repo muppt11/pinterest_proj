@@ -207,3 +207,8 @@ textarea {
 .mb-repost-banner p {
   margin: 0;
 }
+
+.mb-understood {
+  justify-content: center;
+  margin: -8px 0 16px;
+}
