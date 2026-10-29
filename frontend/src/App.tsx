@@ -4,7 +4,11 @@ import { AssistantPanel } from "./components/AssistantPanel";
 import { LabelBadge } from "./components/LabelBadge";
 import { BoardsPage } from "./components/BoardsPage";
 import { CharactersPage } from "./components/CharactersPage";
+import { JoinPage } from "./components/JoinPage";
 import { MoodPage } from "./components/MoodPage";
+import { PublicTripPage } from "./components/PublicTripPage";
+import { TripPage } from "./components/TripPage";
+import { TripsPage } from "./components/TripsPage";
 import { setFocus, useFocus } from "./focus";
 import { onboardingSkipped, StyleQuiz } from "./components/StyleQuiz";
 import { SavesProvider } from "./saves";
@@ -62,6 +66,7 @@ export default function App() {
   const focus = useFocus();
   // Signed-up profile (null = not signed up). With quiz answers, Discover shows "For you" by default.
   const [me, setMe] = useState<Me | null>(null);
+  const [meLoaded, setMeLoaded] = useState(false);
   const [everything, setEverything] = useState(false);
   const hasPrefs = (me?.prefs?.aesthetics?.length ?? 0) + (me?.prefs?.colors?.length ?? 0) + (me?.prefs?.eras?.length ?? 0) > 0;
   const personalized = hasPrefs && !everything;
@@ -135,7 +140,8 @@ export default function App() {
         if (m) setFocus(m.prefs.focus);
         else if (!onboardingSkipped() && window.location.pathname === "/") navigate("/welcome");
       })
-      .catch(() => {});
+      .catch(() => {})
+      .finally(() => setMeLoaded(true));
   }, [navigate]);
 
   const firstPersonalized = useRef(true);
@@ -235,6 +241,14 @@ export default function App() {
             ? `For you, ${me!.display_name}`
             : "Discover";
 
+  if (path.startsWith("/t/")) {
+    return (
+      <main style={{ padding: "24px var(--mb-gutter) 64px" }}>
+        <PublicTripPage slug={decodeURIComponent(path.slice(3))} />
+      </main>
+    );
+  }
+
   return (
     <SavesProvider>
       <Header
@@ -255,6 +269,12 @@ export default function App() {
           <CloseUp itemId={openId} board={board} onBack={back} onOpen={open} />
         ) : path === "/characters" || path.startsWith("/characters/") ? (
           <CharactersPage characterId={path.match(/^\/characters\/([a-z0-9-]+)$/)?.[1] ?? null} onNavigate={navigate} onOpen={openFromFeed} />
+        ) : path === "/trips" ? (
+          <TripsPage signedIn={!!me} onNavigate={navigate} />
+        ) : /^\/trips\/\d+$/.test(path) ? (
+          <TripPage tripId={Number(path.split("/")[2])} onOpen={openFromFeed} onNavigate={navigate} />
+        ) : path.startsWith("/join/") ? (
+          <JoinPage token={decodeURIComponent(path.slice(6))} signedIn={meLoaded ? !!me : null} onNavigate={navigate} />
         ) : path === "/welcome" ? (
           <StyleQuiz
             mode="onboarding"
@@ -262,7 +282,14 @@ export default function App() {
             onDone={(m) => {
               setMe(m);
               setEverything(false);
-              navigate("/");
+              let invite: string | null = null;
+              try {
+                invite = sessionStorage.getItem("mb-pending-invite");
+                sessionStorage.removeItem("mb-pending-invite");
+              } catch {
+                // ignore
+              }
+              navigate(invite && m ? `/join/${invite}` : "/");
             }}
           />
         ) : path === "/me" ? (

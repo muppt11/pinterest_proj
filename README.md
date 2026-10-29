@@ -61,7 +61,7 @@ _To be written._ The five differentiators:
 | 2b | Character style boards: written style profiles of iconic film/TV looks → catalog matches | done |
 | 8 | Checklist save to multiple boards, nested sub-boards, undo toast | done |
 | 8b | Style-focus filter (Menswear / Womenswear / All) chosen in a first-visit welcome popup; estimated by CLIP zero-shot, labeled "estimated", ambiguous items count as unisex | done |
-| 9 | Group trip outfit planning (stretch) | planned |
+| 9 | Group trip outfit planning | done |
 | 10 | Evals | planned |
 
 ### 1. Visual and text search
@@ -214,6 +214,31 @@ _To be written._ The five differentiators:
 **Limits.**
 - The dataset has no EXIF dates (0 of 5,756 files), so catalog-only groups honestly read "original unclear".
 - Crops over about 10% can escape detection.
+
+### 9. Group trip outfit planning
+
+**Problem.** Group trips get planned across several apps (itinerary, chat, shared albums), and none of them help with *what to wear together* (section 2).
+
+**Approach.**
+- **Trips:** a destination found with Open-Meteo geocoding, dates, and day or event slots ("Day 2 · beach dinner").
+- **Sharing:** invite links with a 192-bit random token that's shown once and stored only as a SHA-256 hash. The owner can revoke links, and they expire after 1–30 days.
+- **Roles:** owner, editor and viewer, checked by one helper on every endpoint. Non-members get **404**, not 403, so private trips can't be discovered.
+- **Taste:** each member's inspiration photos are embedded (GPS stripped first, and only vectors and colors are stored, not the photos). The group's blended aesthetic is the mean of the *member* centroids, so each person counts equally however many photos they add. Each pair of members gets a similarity score, described in plain words from "very close" to "clashing".
+- **Weather (Open-Meteo):** the forecast when the whole trip is within 16 days; otherwise **historical averages** of the same dates over the past 5 years from the archive API. There, "rain chance" is the share of those years with at least 1 mm. The source and the attribution are always shown.
+- **Outfit planner (`plan_trip_outfits`):** blends the group's taste with the slot text ("an outfit for beach dinner"), then applies the weather rules:
+  - Below 15°C: outerwear is added and shorts are removed.
+  - At 27°C and above: no outerwear, and shorts, skirts and dresses are preferred.
+  - When rain is likely (50% or more): open-toe shoes are excluded. The sandal cutoff was chosen by viewing all 431 catalog shoes ranked by "open-toe sandals" similarity: ranks 1 to about 97 are nearly all sandals. My first guess would have caught only one.
+- **Coordinate for photos:** k-means over everyone's inspiration colors in Lab gives a shared palette, and suggestions re-rank toward it with Delta E 2000.
+- **Collaboration:** thumbs up and down with "sort by votes"; an activity feed streamed over **Server-Sent Events**; a per-person **packing list** built from the pieces you liked plus weather essentials (umbrella, warm layer, sun protection); day-by-day notes, where assistant drafts are stored and shown as **"AI suggestion"** with a prompt that forbids prices, hours and bookings.
+- **Publish:** a read-only `/t/<slug>` page with no sign-in. It shows the plan and the traveler count, with no names or personal info. The owner can unpublish, after which the page returns 404.
+
+**Checked live.** Reykjavik four days out got the real forecast (9°C, 77–90% rain) and suggestions with outerwear and no shorts. Ninety days out it switched to historical averages (about 1°C) and labeled them.
+
+**Limits.**
+- Identity is a display name plus a cookie, with no passwords. Production would use real authentication.
+- Rate limits are in-memory per user (10 invites a minute, 5 publishes a minute). Production would enforce them at the edge.
+- The activity feed polls SQLite once a second, which is fine at this scale. Production would use a pub/sub system.
 
 ### Style focus: Menswear / Womenswear / All (8b)
 

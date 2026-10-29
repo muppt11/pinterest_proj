@@ -59,6 +59,12 @@ export const FEATURE_TIPS: FeatureTipContent[] = [
     why: "Most boards mix more than one style. Averaging them gives bland picks, so each look gets its own recommendations.",
   },
   {
+    id: "trips",
+    title: "Group trips",
+    how: "Create a trip, invite friends with a link, and everyone adds a few outfit photos. Each day gets outfit ideas that fit the group's blended style and the real weather; vote, then check your packing list.",
+    why: "Group trips are planned across several apps, and none of them help with what to wear together.",
+  },
+  {
     id: "boards",
     title: "Boards and saving",
     how: "Hover any item and tap Save to add it to your last board, or tap the board name to tick several boards at once. Boards can hold sub-boards, as deep as you like. Every save shows Undo for 5 seconds.",
@@ -90,6 +96,7 @@ export const INTRO = {
     "Complete the look, tuned to your board: outfit pieces that match the item and your board's taste",
     "Save to several boards in one go, nest boards inside boards, and Undo any save, with no pop-ups",
     "Ask: a style assistant that can only show items it actually found, never made-up products",
+    "Group trips: blend everyone's style with real weather into coordinated outfits, votes, and packing lists",
     "Shop similar: one tap from any item to shopping results for its exact color and type",
     "Honest search: tells you when nothing truly matches instead of padding results",
   ],

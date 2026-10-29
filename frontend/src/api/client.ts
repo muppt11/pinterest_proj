@@ -305,3 +305,124 @@ export const api = {
     return request<BoardAnalysis>(`/board/analyze?k=${k}`, { method: "POST", body });
   },
 };
+
+// --- Trips (feature 9) ---------------------------------------------------------------------------
+
+export interface Place {
+  name: string;
+  country: string | null;
+  admin: string | null;
+  latitude: number;
+  longitude: number;
+}
+
+export interface DayWeather {
+  date: string;
+  high_c: number | null;
+  low_c: number | null;
+  rain_chance: number | null;
+}
+
+export interface TripWeather {
+  source: "forecast" | "historical average" | "unavailable";
+  source_detail: string;
+  attribution: string;
+  days: DayWeather[];
+}
+
+export interface TripSummary {
+  id: number;
+  name: string;
+  place_name: string;
+  start_date: string;
+  end_date: string;
+  role: "owner" | "editor" | "viewer";
+}
+
+export interface TripDetail {
+  id: number;
+  name: string;
+  place: string;
+  start_date: string;
+  end_date: string;
+  coordinate: boolean;
+  public_slug: string | null;
+  published: boolean;
+  your_role: "owner" | "editor" | "viewer";
+  members: { user_id: number; name: string; role: string; is_you: boolean }[];
+  slots: { id: number; day: string; label: string }[];
+  weather: TripWeather;
+  taste: {
+    inspiration_count: number;
+    group_style: string[];
+    members: { user_id: number; name: string; style: string[] }[];
+    overlap: { a: string; b: string; similarity: number; reading: string }[];
+  };
+  palette: { hex: string; weight: number }[];
+}
+
+export interface SlotSuggestions {
+  slot: { id: number; day: string; label: string };
+  weather: Partial<DayWeather>;
+  weather_source: string;
+  items: { role: string; item: Item; votes: { up: number; down: number; mine: number } }[];
+}
+
+export interface TripNote {
+  id: number;
+  day: string;
+  text: string;
+  ai_suggestion: number;
+  author: string;
+}
+
+export interface PublicTrip {
+  name: string;
+  place: string;
+  start_date: string;
+  end_date: string;
+  travelers: number;
+  weather: TripWeather;
+  lineup: { day: string; label: string; items: Item[] }[];
+  notes: { day: string; text: string; ai_suggestion: number }[];
+}
+
+const jsonBody = (method: string, body: unknown): RequestInit => ({
+  method,
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify(body),
+});
+
+export const tripsApi = {
+  geocode: (q: string) => request<Place[]>(`/geocode?q=${encodeURIComponent(q)}`),
+  list: () => request<TripSummary[]>("/trips"),
+  create: (body: { name: string; place: Place; start_date: string; end_date: string; slots: { day: string; label: string }[] }) =>
+    request<{ id: number }>("/trips", jsonBody("POST", body)),
+  get: (id: number) => request<TripDetail>(`/trips/${id}`),
+  setCoordinate: (id: number, on: boolean) => request<unknown>(`/trips/${id}?coordinate=${on}`, { method: "PATCH" }),
+  addSlot: (id: number, day: string, label: string) => request<{ id: number }>(`/trips/${id}/slots`, jsonBody("POST", { day, label })),
+  createInvite: (id: number, role: "editor" | "viewer") =>
+    request<{ id: number; token: string; role: string; expires_at: string }>(`/trips/${id}/invites`, jsonBody("POST", { role })),
+  invites: (id: number) => request<{ id: number; role: string; expires_at: string; revoked: number }[]>(`/trips/${id}/invites`),
+  revokeInvite: (id: number, inviteId: number) => fetch(`${BASE}/trips/${id}/invites/${inviteId}`, { method: "DELETE" }),
+  join: (token: string) => request<{ trip_id: number; role: string }>(`/join/${encodeURIComponent(token)}`, { method: "POST" }),
+  addInspiration: (id: number, files: File[]) => {
+    const body = new FormData();
+    files.forEach((f) => body.append("images", f));
+    return request<{ added: number }>(`/trips/${id}/inspiration`, { method: "POST", body });
+  },
+  suggestions: (id: number, slotId: number, sort: "relevance" | "votes") =>
+    request<SlotSuggestions>(`/trips/${id}/slots/${slotId}/suggestions?sort=${sort}`),
+  vote: (id: number, slotId: number, itemId: string, value: -1 | 0 | 1) =>
+    request<unknown>(`/trips/${id}/slots/${slotId}/votes`, jsonBody("POST", { item_id: itemId, value })),
+  packing: (id: number) =>
+    request<{ items: { kind: string; label: string; item_id?: string; why?: string }[]; weather_source: string }>(`/trips/${id}/packing`),
+  notes: (id: number) => request<TripNote[]>(`/trips/${id}/notes`),
+  addNote: (id: number, day: string, text: string) => request<unknown>(`/trips/${id}/notes`, jsonBody("POST", { day, text })),
+  draftNote: (id: number, day: string) => request<{ text: string }>(`/trips/${id}/notes/draft?day=${day}`, { method: "POST" }),
+  activity: (id: number) => request<{ id: number; actor: string; text: string; created_at: string }[]>(`/trips/${id}/activity`),
+  eventsUrl: (id: number) => `${BASE}/trips/${id}/events`,
+  publish: (id: number) => request<{ slug: string }>(`/trips/${id}/publish`, { method: "POST" }),
+  unpublish: (id: number) => fetch(`${BASE}/trips/${id}/publish`, { method: "DELETE" }),
+  publicTrip: (slug: string) => request<PublicTrip>(`/public/trips/${encodeURIComponent(slug)}`),
+};
