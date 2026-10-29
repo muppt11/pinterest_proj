@@ -211,3 +211,29 @@ def test_status_reports_missing_ollama(monkeypatch) -> None:  # type: ignore[no-
     monkeypatch.setattr(urllib.request, "urlopen", down)
     body = TestClient(app).get("/assistant/status").json()
     assert body == {"available": False, "model": "qwen3:8b", "reason": "ollama_not_running"}
+
+
+def test_endless_searching_gets_a_forced_answer_not_an_error(chat) -> None:  # type: ignore[no-untyped-def]
+    """Regression: a model that kept re-searching hit LangGraph's recursion limit and errored."""
+    from app.agent.graph import MAX_TOOL_ROUNDS
+
+    loops = [tool_call("search_similar", {"query": "red shirt"}, call_id=f"c{i}") for i in range(MAX_TOOL_ROUNDS + 1)]
+    client = chat([*loops, AIMessage(content="Best pick: [item:tshirt-red].")])
+    evs = events(client.post("/assistant/chat", json={"message": "something cozy for a rainy day"}))
+    assert [e for e, _ in evs if e == "error"] == []
+    done = evs[-1][1]
+    assert done["items_source"] == "cited" and [i["id"] for i in done["items"]] == ["tshirt-red"]
+
+
+def test_uncited_results_fall_back_to_tool_items(chat) -> None:  # type: ignore[no-untyped-def]
+    client = chat([tool_call("search_similar", {"query": "red shirt", "k": 2}), AIMessage(content="I found a couple of red tops for you.")])
+    done = events(client.post("/assistant/chat", json={"message": "red tops?"}))[-1][1]
+    assert done["items_source"] == "tool results"
+    assert [i["id"] for i in done["items"]] == ["tshirt-red", "tshirt-pink"]
+
+
+def test_search_tool_kids_filter(catalog: Catalog, ledger: TurnLedger) -> None:
+    out = call(build_tools(catalog, FakeEmbedder(), ledger), "search_similar", query="boot", kids=True)
+    assert [r["id"] for r in out["results"]] == ["shoes-boot"]
+    adults = call(build_tools(catalog, FakeEmbedder(), TurnLedger()), "search_similar", query="boot", kids=False)
+    assert "shoes-boot" not in [r["id"] for r in adults["results"]]

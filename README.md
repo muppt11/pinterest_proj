@@ -21,12 +21,7 @@ make dev                  # API on :8000, web app on :5173
 
 ### Hosting
 
-There's no always-on hosted demo, on purpose. The app needs a Python server with about 3 GB of RAM for FashionCLIP, and the free hosts that used to fit (Hugging Face Docker Spaces) now require a paid plan for new accounts. Everything is ready for a paid host, though:
-- A `Dockerfile` with CPU-only PyTorch, which downloads the data and builds the index inside the image.
-- `app/serve.py`, which serves the API and the app from one process.
-- `make deploy-hf SPACE=<user>/<space>`, which pushes to a Hugging Face Space ($9/month PRO).
-
-For a live session, a tunnel from your laptop (for example Cloudflare Tunnel) also works.
+MoodBoards runs locally; the demo video shows it in action. It isn't hosted because it needs a Python server with about 3 GB of RAM, plus a local model for the assistant, and free hosts no longer cover that. The repo is still deploy-ready: there's a `Dockerfile` (CPU-only PyTorch, data built inside the image) and `app/serve.py`, which serves the API and the app from one process.
 
 ## 2. User research and opportunities
 
@@ -497,7 +492,7 @@ Some features are built here in a reduced but honest form, because the full vers
 - **Repost detection** misses crops beyond about 10% (57% recall at 5% per side).
 - **Card titles are category names**, because the dataset has no product names and the app doesn't invent them.
 - **Identity is a display name plus a cookie.** Rate limits are in memory, and the activity feed polls SQLite. All three need production replacements.
-- **Shop this exact look** pastes into Google Lens locally. It's automatic only when the photos are at a public URL.
+- **Shop this exact look** copies the photo for a one-key paste into Google Lens, because Google can't fetch images from `localhost`. On a public deployment it would search automatically.
 
 ### Next steps
 

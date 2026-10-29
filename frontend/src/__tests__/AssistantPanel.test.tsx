@@ -1,6 +1,6 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import { parseSse } from "../api/sse";
-import { AssistantPanel } from "../components/AssistantPanel";
+import { AssistantPanel, suggestionsFor } from "../components/AssistantPanel";
 
 const item = (id: string, category: string) => ({ id, category, image_url: `/images/${id}.jpg`, kids: false, width: 4, height: 5 });
 
@@ -55,7 +55,7 @@ describe("AssistantPanel", () => {
   it("shows the model error message", async () => {
     vi.stubGlobal("fetch", withStatus(READY, () => sseResponse([["error", { message: "The assistant model isn't reachable." }]])));
     render(<AssistantPanel {...props} />);
-    fireEvent.click(screen.getByRole("button", { name: "What shoes would finish this look?" }));
+    fireEvent.click(await screen.findByRole("button", { name: "What shoes would finish this look?" }));
     expect(await screen.findByText("The assistant model isn't reachable.")).toBeInTheDocument();
   });
 
@@ -70,5 +70,16 @@ describe("AssistantPanel", () => {
   it("renders nothing when closed", () => {
     const { container } = render(<AssistantPanel {...props} open={false} />);
     expect(container).toBeEmptyDOMElement();
+  });
+});
+
+describe("suggestionsFor", () => {
+  it("leads with item and board questions when there's context", () => {
+    expect(suggestionsFor(true, false)[0]).toBe("What shoes would finish this look?");
+    expect(suggestionsFor(false, true)[0]).toBe("Describe my board's style");
+    const general = suggestionsFor(false, false);
+    expect(general).toContain("Find a black leather jacket");
+    expect(general).not.toContain("What shoes would finish this look?");
+    expect(suggestionsFor(true, true)).toHaveLength(5);
   });
 });

@@ -1,11 +1,15 @@
 """The assistant as an explicit LangGraph: agent ⇄ tools loop, then a grounding check.
 
-    START → agent ──(tool calls?)──→ tools → agent …
-                 └─(final answer)──→ END   (validate_answer runs on the final text)
+    START → agent ──(tool calls, under the round limit)──→ tools → agent …
+                 ├─(tool calls, limit reached)──→ final → END
+                 └─(final answer)───────────────→ END   (validate_answer runs on the final text)
+
+"final" asks the model to answer from what the tools already returned, with no tools available, so a
+model that keeps re-searching gets a real answer instead of a recursion error.
 """
 
 from langchain_core.language_models import BaseChatModel
-from langchain_core.messages import SystemMessage
+from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
 from langchain_core.tools import BaseTool
 from langgraph.graph import END, START, MessagesState, StateGraph
 from langgraph.graph.state import CompiledStateGraph
@@ -24,6 +28,9 @@ Rules:
 - If a tool returns no results or an error, say so plainly and suggest a different description.
 - If the request isn't about clothing, outfits, or style, say briefly that you can only help with \
 outfits from this catalog. Don't call tools for it.
+- For any clothing request, call search_similar (or complete_look / compare_items) before answering.
+  The catalog includes kids' clothing: pass kids=true when the user asks for kids' items.
+- Search once or twice at most, then answer with what you found. Cite 3-6 items.
 - Keep answers short: a sentence or two of reasoning, then the cited items.
 {context}"""
 
@@ -36,15 +43,29 @@ def build_graph(llm: BaseChatModel, tools: list[BaseTool], categories: list[str]
     def agent(state: MessagesState) -> dict:
         return {"messages": [model.invoke([system, *state["messages"]])]}
 
+    def final(state: MessagesState) -> dict:
+        # Drop the pending tool calls and answer from the results gathered so far, without tools.
+        history = [m for m in state["messages"][:-1]]
+        nudge = HumanMessage("Stop searching. Answer now using only the tool results above, citing items as [item:ID].")
+        return {"messages": [llm.invoke([system, *history, nudge])]}
+
+    def route(state: MessagesState) -> str:
+        if tools_condition(state) != "tools":
+            return END
+        rounds = sum(1 for m in state["messages"] if isinstance(m, AIMessage) and m.tool_calls)
+        return "tools" if rounds <= MAX_TOOL_ROUNDS else "final"
+
     graph = StateGraph(MessagesState)
     graph.add_node("agent", agent)
     graph.add_node("tools", ToolNode(tools, handle_tool_errors=True))
+    graph.add_node("final", final)
     graph.add_edge(START, "agent")
-    graph.add_conditional_edges("agent", tools_condition, {"tools": "tools", END: END})
+    graph.add_conditional_edges("agent", route, {"tools": "tools", "final": "final", END: END})
     graph.add_edge("tools", "agent")
+    graph.add_edge("final", END)
     return graph.compile()
 
 
 def recursion_limit() -> int:
-    """LangGraph counts each node visit; agent + tools per round, plus the final agent step."""
-    return 2 * MAX_TOOL_ROUNDS + 1
+    """LangGraph counts each node visit: agent + tools per round, then agent and the forced final step."""
+    return 2 * MAX_TOOL_ROUNDS + 4

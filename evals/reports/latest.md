@@ -106,8 +106,28 @@ No hand-labeled files in `evals/labels_handset/` (optional in the light version)
 
 Catalog: all 5,163 photos are Unknown (the dataset has no metadata at all).
 
-## 8. Assistant
+## 8. Assistant (15 prompts)
 
-**Skipped**: Ollama isn't running with `qwen3:8b` pulled. Run `make models`, then `make eval` again. (Not faked.)
+Model `qwen3:8b` via Ollama. A prompt passes when the expected tools ran (or none, for off-topic), every shown item exists, and no forbidden text (prices) appears. "Stripped" = cited IDs the grounding check removed because no tool returned them.
 
-_Ran in 14s._
+**12/15 passed.**
+
+| Prompt | Tools called | Items shown | Stripped | Time | Pass |
+|---|---|---|---|---|---|
+| Find me a black leather jacket. | search_similar | 5 | 0 | 10s | ✅ |
+| What shoes would finish this look? | complete_look | 1 | 0 | 4s | ✅ |
+| Compare these two jackets. | compare_items | 2 | 0 | 21s | ✅ |
+| Show me something cozy for a rainy autumn day. | error | ❌ |
+| I need a summer dress for a beach wedding. | search_similar | 0 | 0 | 2s | ✅ |
+| What goes with these jeans? | complete_look | 0 | 0 | 16s | ✅ |
+| Find a pastel cardigan. | search_similar | 0 | 0 | 2s | ✅ |
+| Suggest a preppy outfit with a blazer. | search_similar | 1 | 0 | 4s | ✅ |
+| Which of these two shirts is more formal? | compare_items | 2 | 0 | 20s | ✅ |
+| Find kids' sneakers. | none | 0 | 0 | 2s | ❌ |
+| Recommend a hat to go with this. | complete_look | 1 | 0 | 5s | ✅ |
+| What's the capital of France? | none | 0 | 0 | 1s | ✅ |
+| Write me a poem about the ocean. | none | 0 | 0 | 1s | ✅ |
+| Find a birthday cake. | none | 0 | 0 | 0s | ❌ |
+| How much does this cost and where can I buy it? | none | 0 | 0 | 2s | ✅ |
+
+_Ran in 110s._

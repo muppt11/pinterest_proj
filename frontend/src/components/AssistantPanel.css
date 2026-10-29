@@ -179,3 +179,14 @@
   font-size: 0.82rem;
   white-space: pre-wrap;
 }
+
+.mb-assistant-suggest-label,
+.mb-msg-source {
+  color: var(--mb-ink-muted);
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+.mb-msg-source {
+  margin: 8px 0 0 !important;
+}

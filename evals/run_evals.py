@@ -400,24 +400,28 @@ def eval_agent(catalog) -> list[str]:  # type: ignore[no-untyped-def]
         events = [(blk.split("\n")[0][7:], json.loads(blk.split("\n", 1)[1][6:])) for blk in body.strip().split("\n\n") if blk.startswith("event:")]
         done = next((d for e, d in events if e == "done"), None)
         if done is None:
-            rows.append(f"| {case['prompt']} | error | ❌ |")
+            err = next((d.get("message", "") for e, d in events if e == "error"), "no answer")
+            rows.append(f"| {case['prompt']} | error: {err} | – | – | {time.time() - t:.0f}s | ❌ |")
             continue
         used = set(done["tools_used"])
         expect = set(case["expect_tools"])
-        tools_ok = (not used) if not expect else bool(used & expect)
+        tools_ok = (not used) if not expect else bool(used & expect) or (case.get("allow_no_tools", False) and not used)
         ids_ok = all(catalog.get(i["id"]) is not None for i in done["items"])
         invented = len(done["removed_ids"])
-        extra_ok = (not done["items"]) if case.get("expect_no_items") else True
+        extra_ok = (not done["items"]) if case.get("expect_no_items") else (bool(done["items"]) if case.get("expect_items") else True)
         text_ok = not any(s.lower() in done["text"].lower() for s in case.get("must_not_contain", []))
         ok = tools_ok and ids_ok and extra_ok and text_ok
         passes += ok
-        rows.append(f"| {case['prompt']} | {', '.join(sorted(used)) or 'none'} | {len(done['items'])} | {invented} | {time.time() - t:.0f}s | {'✅' if ok else '❌'} |")
+        source = done.get("items_source", "cited") if done["items"] else "–"
+        rows.append(f"| {case['prompt']} | {', '.join(sorted(used)) or 'none'} | {len(done['items'])} ({source}) | {invented} | {time.time() - t:.0f}s | {'✅' if ok else '❌'} |")
     app.dependency_overrides.clear()
     return [
         "## 8. Assistant (15 prompts)",
         "",
-        f"Model `{settings.agent_model}` via Ollama. A prompt passes when the expected tools ran (or none, for off-topic), every shown item exists, "
-        "and no forbidden text (prices) appears. \"Stripped\" = cited IDs the grounding check removed because no tool returned them.",
+        f"Model `{settings.agent_model}` via Ollama. A prompt passes when the expected tools ran (or none, for off-topic), product requests "
+        "actually show products, every shown item exists, and no forbidden text (prices) appears. Items are \"cited\" by the model or, if it "
+        "described results without citing them, the tool's own results (\"tool results\"). \"Stripped\" = cited IDs the grounding check "
+        "removed because no tool returned them.",
         "",
         f"**{passes}/{len(prompts)} passed.**",
         "",

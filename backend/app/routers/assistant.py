@@ -32,6 +32,7 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/assistant", tags=["assistant"])
 
 MAX_HISTORY = 10
+FALLBACK_ITEMS = 6
 
 
 class ChatTurn(BaseModel):
@@ -85,13 +86,13 @@ async def _run(req: ChatRequest, catalog: Catalog, embedder: Embedder, llm: Base
         ):
             if mode == "messages":
                 chunk, meta = payload
-                if meta.get("langgraph_node") == "agent" and isinstance(chunk, (AIMessageChunk, AIMessage)):
+                if meta.get("langgraph_node") in ("agent", "final") and isinstance(chunk, (AIMessageChunk, AIMessage)):
                     if chunk.content and not getattr(chunk, "tool_calls", None):
                         yield _sse("token", {"text": chunk.content})
             elif mode == "updates":
                 for node, update in payload.items():
                     for msg in (update or {}).get("messages", []):
-                        if node == "agent" and isinstance(msg, AIMessage):
+                        if node in ("agent", "final") and isinstance(msg, AIMessage):
                             for call in msg.tool_calls:
                                 yield _sse("tool", {"name": call["name"], "args": call["args"]})
                             if not msg.tool_calls:
@@ -112,8 +113,16 @@ async def _run(req: ChatRequest, catalog: Catalog, embedder: Embedder, llm: Base
     if not final_text.strip():
         final_text = "I couldn't finish that request. Try asking more specifically, e.g. “black boots for a denim skirt”."
     answer = validate_answer(final_text, ledger.item_ids)
-    items = [Item.from_meta(catalog.get(i)).model_dump() for i in answer.item_ids]  # type: ignore[arg-type]
-    yield _sse("done", {"text": answer.text, "items": items, "removed_ids": answer.removed_ids, "tools_used": ledger.tools_used})
+    item_ids, items_source = answer.item_ids, "cited"
+    if not item_ids and ledger.ordered_ids:
+        # The model described results without citing them: show what the tools actually returned
+        # (still grounded, and labeled in the UI) rather than an answer with no pictures.
+        item_ids, items_source = ledger.ordered_ids[:FALLBACK_ITEMS], "tool results"
+    items = [Item.from_meta(catalog.get(i)).model_dump() for i in item_ids]  # type: ignore[arg-type]
+    yield _sse(
+        "done",
+        {"text": answer.text, "items": items, "items_source": items_source, "removed_ids": answer.removed_ids, "tools_used": ledger.tools_used},
+    )
 
 
 def _ids_in(value: Any) -> set[str]:

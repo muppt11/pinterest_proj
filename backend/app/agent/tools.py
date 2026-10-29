@@ -12,7 +12,7 @@ from langchain_core.tools import BaseTool, tool
 from app.services.catalog import Catalog
 from app.services.complete_look import complete_look as complete_look_service
 from app.services.embedder import Embedder
-from app.services.relevance import MIN_TEXT_RELEVANCE, RELEVANCE_WINDOW
+from app.services.text_search import text_search
 
 MAX_COMPARE = 4
 
@@ -23,6 +23,7 @@ class TurnLedger:
 
     item_ids: set[str] = field(default_factory=set)
     tools_used: list[str] = field(default_factory=list)
+    ordered_ids: list[str] = field(default_factory=list)  # results in the order tools returned them
 
 
 @dataclass
@@ -54,25 +55,23 @@ def build_tools(
     def record(name: str, items: list[dict[str, Any]]) -> None:
         ledger.tools_used.append(name)
         ledger.item_ids.update(i["id"] for i in items)
+        ledger.ordered_ids.extend(i["id"] for i in items if i["id"] not in ledger.ordered_ids)
 
     @tool
-    def search_similar(query: str, category: str | None = None, k: int = 6) -> str:
-        """Find catalog items matching a description, e.g. 'black ankle boots'. Optionally restrict to
-        one category (one of the catalog's category names). Returns up to k items with similarity scores."""
+    def search_similar(query: str, category: str | None = None, kids: bool | None = None, k: int = 6) -> str:
+        """Find catalog items matching a description, e.g. 'black ankle boots' or 'pastel cardigan'.
+        Garment and color words in the query are understood automatically. Optionally restrict to one
+        category name, or set kids=true for children's clothing (kids=false for adults only)."""
         k = max(1, min(k, 12))
         if category is not None and category not in catalog.categories:
             ledger.tools_used.append("search_similar")
             return json.dumps({"error": f"unknown category; choose from {catalog.categories}"})
-        vector = embedder.embed_texts([query])[0]
-        hits = catalog.search(vector, k=max(k, RELEVANCE_WINDOW), category=category)
-        window = hits[:RELEVANCE_WINDOW]
-        weak = not window or sum(h.score for h in window) / len(window) < MIN_TEXT_RELEVANCE
-        if weak:
+        result = text_search(catalog, embedder, query, k, category=category, kids=kids)
+        if result.low_relevance or not result.hits:
             ledger.tools_used.append("search_similar")
             return json.dumps({"results": [], "note": "no good matches; the catalog is clothing only"})
-        hits = hits[:k]
-        record("search_similar", [h.item for h in hits])
-        return json.dumps({"results": [_brief(h.item, h.score) for h in hits]})
+        record("search_similar", [h.item for h in result.hits])
+        return json.dumps({"understood": result.understood, "results": [_brief(h.item, h.score) for h in result.hits]})
 
     @tool
     def complete_look(item_id: str, per_group: int = 3) -> str:

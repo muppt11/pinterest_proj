@@ -7,6 +7,7 @@ interface Message {
   role: "user" | "assistant";
   text: string;
   items?: Item[];
+  itemsSource?: "cited" | "tool results";
   activity?: string[];
   error?: boolean;
   pending?: boolean;
@@ -27,7 +28,19 @@ const TOOL_LABELS: Record<string, string> = {
   describe_board: "Reading your board",
 };
 
-const SUGGESTIONS = ["What shoes would finish this look?", "Find me a cozy oversized sweater", "Compare these two items"];
+/** Suggested questions that fit what you're looking at (each one is in the assistant eval set or close to it). */
+export function suggestionsFor(hasItem: boolean, hasBoard: boolean): string[] {
+  const item = ["What shoes would finish this look?", "What goes with this for a dinner out?", "Find something like this in a different color"];
+  const board = ["Describe my board's style", "Build an outfit from my board's main aesthetic"];
+  const general = [
+    "Find a black leather jacket",
+    "What should I wear to a summer beach wedding?",
+    "Build a cozy outfit for a rainy autumn day",
+    "Show me pastel tops for spring",
+    "Find kids' sneakers",
+  ];
+  return [...(hasItem ? item : []), ...(hasBoard ? board : []), ...general].slice(0, 5);
+}
 
 /** Replace [item:ID] citations with the item's position in the cards below, e.g. "(1)". */
 function renderCitations(text: string, items: Item[]): string {
@@ -86,7 +99,8 @@ export function AssistantPanel({ open, onClose, onOpenItem, contextItemIds, boar
           update((m) => ({ ...m, text: m.text + (d.text as string) }));
         } else if (event === "done") {
           const items = d.items as Item[];
-          update((m) => ({ ...m, text: renderCitations(d.text as string, items), items, pending: false }));
+          const itemsSource = (d.items_source as Message["itemsSource"]) ?? "cited";
+          update((m) => ({ ...m, text: renderCitations(d.text as string, items), items, itemsSource, pending: false }));
         } else if (event === "error") {
           update((m) => ({ ...m, text: d.message as string, error: true, pending: false }));
         }
@@ -141,7 +155,8 @@ export function AssistantPanel({ open, onClose, onOpenItem, contextItemIds, boar
       <ol className="mb-assistant-log" aria-live="polite">
         {messages.length === 0 && status?.available !== false && (
           <li className="mb-assistant-suggestions">
-            {SUGGESTIONS.map((s) => (
+            <span className="mb-assistant-suggest-label">Try asking</span>
+            {suggestionsFor(contextItemIds.length > 0, !!board).map((s) => (
               <button key={s} type="button" onClick={() => send(s)}>
                 {s}
               </button>
@@ -158,6 +173,9 @@ export function AssistantPanel({ open, onClose, onOpenItem, contextItemIds, boar
               </ul>
             )}
             {m.text ? <p>{m.text}</p> : m.pending && <p className="mb-msg-typing">Thinking…</p>}
+            {m.items && m.items.length > 0 && m.itemsSource === "tool results" && (
+              <p className="mb-msg-source">From the catalog search:</p>
+            )}
             {m.items && m.items.length > 0 && (
               <ul className="mb-msg-items">
                 {m.items.map((item, j) => (
