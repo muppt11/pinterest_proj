@@ -52,8 +52,26 @@ def list_items(
     _check_category(catalog, category)
     rows = [r for r, i in enumerate(catalog.items) if (category is None or i["category"] == category) and i["id"] not in focus.excluded]
     ids = [i["id"] for i in catalog.items]
-    pool = [catalog.items[r] for r in catalog.reposts.dedupe_rows(rows, ids)]
+    ordered = focus.order(rows)
+    if focus.focus != "all" and category is None:
+        ordered = _interleave_by_category(ordered, catalog)
+    pool = [catalog.items[r] for r in catalog.reposts.dedupe_rows(ordered, ids)]
     return ItemPage(items=[Item.from_meta(i) for i in pool[offset : offset + limit]], total=len(pool), offset=offset)
+
+
+def _interleave_by_category(rows: list[int], catalog: Catalog) -> list[int]:
+    """Round-robin across categories, keeping each category's internal order (strongest first)."""
+    buckets: dict[str, list[int]] = {}
+    for r in rows:
+        buckets.setdefault(catalog.items[r]["category"], []).append(r)
+    queues = list(buckets.values())
+    out: list[int] = []
+    while queues:
+        for q in list(queues):
+            out.append(q.pop(0))
+            if not q:
+                queues.remove(q)
+    return out
 
 
 @router.get("/items/{item_id}", response_model=Item)

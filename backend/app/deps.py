@@ -63,6 +63,14 @@ class FocusFilter:
     focus: Focus
     excluded: set[str]
     mask: np.ndarray | None  # per-row allowed mask, or None for "all"
+    lean: np.ndarray | None = None  # per-row womenswear-minus-menswear lean, or None for "all"
+
+    def order(self, rows: list[int]) -> list[int]:
+        """Rows with the most clearly on-focus items first (stable), so the feed visibly changes."""
+        if self.lean is None or self.focus == "all":
+            return rows
+        sign = 1.0 if self.focus == "women" else -1.0
+        return sorted(rows, key=lambda r: -sign * float(self.lean[r]))
 
 
 def get_focus(
@@ -78,4 +86,4 @@ def get_focus(
     if index is None:
         index = FocusIndex(catalog, embedder_factory())
         catalog._focus_index = index  # type: ignore[attr-defined]
-    return FocusFilter(focus, index.excluded_ids(focus), index.allowed(focus))
+    return FocusFilter(focus, index.excluded_ids(focus), index.allowed(focus), index.lean)

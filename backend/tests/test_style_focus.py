@@ -68,3 +68,12 @@ def test_focus_applies_to_similar_and_complete_look(client: TestClient) -> None:
     assert ids(similar) == {"pants-jeans"}
     look = client.post("/complete-look?focus=women", json={"item_id": "tshirt-red"}).json()
     assert all(r["id"] != "pants-jeans" for g in look["groups"] for r in g["results"])
+
+
+def test_browse_order_changes_with_focus(client: TestClient) -> None:
+    """Regression: the first page looked identical under both focuses because unisex items led."""
+    women = [i["id"] for i in client.get("/items", params={"focus": "women"}).json()["items"]]
+    men = [i["id"] for i in client.get("/items", params={"focus": "men"}).json()["items"]]
+    assert women[0] in ("tshirt-red", "tshirt-pink")  # most womenswear-leaning first
+    assert men[0] == "pants-jeans"  # most menswear-leaning first
+    assert women != men
