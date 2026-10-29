@@ -10,22 +10,18 @@ import numpy as np
 
 from app.services.aesthetics import ERA_PHRASES, STYLE_WORDS, bank_for, diversified_order, phrases_for
 from app.services.catalog import Catalog
+from app.services.color_families import FAMILY_SWATCHES as COLOR_FAMILIES
+from app.services.color_families import items_in_families
 from app.services.color import delta_e_2000, hex_to_rgb, rgb_to_lab
 from app.services.color_search import ColorIndex
 from app.services.embedder import Embedder
 
-COLOR_FAMILIES: dict[str, list[str]] = {
-    "neutrals": ["#f5f5f0", "#d8c8b0", "#8a8a8a", "#1a1a1a", "#c3a27a"],
-    "brights": ["#e60023", "#ff7a00", "#f5d000", "#00a651", "#0072ce", "#e5007e"],
-    "pastels": ["#f6c6d0", "#cfe3f5", "#d9f0d3", "#e6dcf5", "#fff2b3"],
-    "darks": ["#1b2a4a", "#4a1020", "#1f3d2b", "#2b2b2b", "#3d2a1e"],
-    "earth tones": ["#a0522d", "#8b7d3a", "#c19a6b", "#6b4f2a", "#b5651d"],
-}
 
 ERAS = ERA_PHRASES  # quiz era keys -> signature garments
 
 MAX_PICKS = 6
-TEXT_WEIGHT = 0.7  # vs. color fit, when both are set
+TEXT_WEIGHT = 0.7  # vs. color fit, when both are set (after the color-family filter)
+MIN_FAMILY_ITEMS = 24  # below this, fall back to blending instead of filtering
 DE_ZERO = 40.0
 
 
@@ -85,6 +81,12 @@ def for_you(
     mask = np.array([not item["kids"] for item in catalog.items])
     if allowed is not None:
         mask &= allowed
+    if prefs.colors:
+        # Color families are a filter: an item qualifies when its *main* color is in a chosen family
+        # (Lab rules, services/color_families.py). Blending alone let dark items through on style.
+        in_family = items_in_families(catalog.items, prefs.colors)
+        if (mask & in_family).sum() >= MIN_FAMILY_ITEMS:
+            mask &= in_family
     combined = np.where(mask, combined, -1.0)
     if style is not None:
         ranked = diversified_order(combined, style.phrase_of, eligible=combined >= 0, pool=max(400, (offset + k) * 3))
