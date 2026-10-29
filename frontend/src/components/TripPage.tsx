@@ -24,7 +24,16 @@ export function WeatherCard({ weather }: { weather: TripWeather }) {
           </li>
         ))}
       </ul>
-      <p className="mb-trip-source">{weather.attribution}</p>
+      <p className="mb-trip-source">
+        <a href="https://open-meteo.com/" target="_blank" rel="noopener noreferrer">
+          Weather data by Open-Meteo.com
+        </a>{" "}
+        (
+        <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener noreferrer">
+          CC BY 4.0
+        </a>
+        )
+      </p>
     </section>
   );
 }

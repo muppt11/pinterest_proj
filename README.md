@@ -4,13 +4,13 @@
 
 ## 1. Pitch
 
-_One-line pitch: written once features 1–2 work._
+**MoodBoards turns a board of outfit photos into a taste profile, then finds, explains and plans outfits around it, alone or with friends on a trip.**
 
 ![Demo GIF placeholder](docs/demo.gif)
 
 ### Run it locally
 
-Prerequisites: [uv](https://docs.astral.sh/uv/), Node 20+, [Ollama](https://ollama.com).
+Prerequisites: [uv](https://docs.astral.sh/uv/) and Node 20+. [Ollama](https://ollama.com) is optional: only the Ask assistant and AI-drafted trip notes need it.
 
 ```bash
 make setup models index   # once: deps, local models, catalog index
@@ -21,7 +21,19 @@ make dev                  # API on :8000, web app on :5173
 
 ## 2. User research and opportunities
 
-_The full Problem | Evidence | My fix | Limits table is filled in as each feature lands._
+Sources are paraphrased; see section 11 for links and what each one informed.
+
+| Problem | Evidence | My fix | Limits |
+|---|---|---|---|
+| AI-generated images flooding feeds and search, including AI recipe results that lead to ad-heavy sites | 404 Media; CNN via European Business Review; GB News; TechCrunch | Feature 5: evidence-based labels on every card (light version) | Labels need provenance metadata; most images have none, so they honestly read Unknown. The "Fewer AI images" toggle was scoped out |
+| AI labels wrongly applied to human-made work; creators stuck in appeal loops; reported mislabeling of images of women | 404 Media; Geo.tv | Feature 5: labels only from C2PA/IPTC evidence, default Unknown, click-to-explain naming the exact field | The review queue was scoped out of the light version |
+| Labels only visible after a click, and not applied to ads | Wired via TechDefused | Feature 5: labels sit on the grid card and apply to every item | There are no ads in this demo to label |
+| Artists' work reposted without credit | 404 Media; r/Pinterest post cataloging stolen content | Feature 6: pHash + CLIP + color repost detection; collapsed cards credit the earliest source or say "original unclear" | No capture dates in the catalog; heavy crops can escape |
+| Wish: search by color *(anecdotal)* | r/Pinterest dream-features thread; my notes | Feature 7 + 7b: color picker (CIEDE2000) and the mood picker | Background colors can leak into small items |
+| Wish: save to multiple boards; disruptive pop-ups after save/download *(anecdotal)* | Same thread; my notes | Feature 8: checklist save, nested sub-boards, 5-second undo toast, no modals | Single local user until trips add identity |
+| Too many ads | PiunikaWeb | Not addressed: there are no ads in this demo. Labels would still apply to sponsored items | n/a |
+| AI moderation suspending accounts without explanation | TechRound; Geo.tv | Not directly addressed. The labels show the pattern I'd apply: explanations naming the evidence | No moderation system here |
+| Opportunity: group trip planning is split across several apps, and group boards and travel planners don't help with what to wear | Group-trip apps roundup; Stippl vs Wanderlog; Pinterest group-board features; family trip vision board trend; Pinterest Q2 2026 call (travel as a growing category) | Feature 9: blended group taste + real weather → coordinated outfits, votes, packing lists, public trip page | No real auth; in-memory rate limits |
 
 ### User wishes (anecdotal)
 
@@ -30,19 +42,29 @@ From an r/Pinterest thread where users listed their dream features ([link](https
 | Wish (paraphrased) | Why it matters | My fix | Limits |
 |---|---|---|---|
 | Unlimited sub-boards inside boards | Big boards turn into a wall of images; one level of sections isn't enough for "Wedding → Guest outfits → Shoes" | Feature 8: nested sub-boards with no fixed depth limit, plus breadcrumbs | Deep nesting can get hard to navigate; the UI shows breadcrumbs and item counts per level |
-| A color picker | People often remember an outfit by its color, not by a word for it | Feature 7: color picker in the search bar, ranked by perceptual color distance | Dominant colors come from the whole photo, so backgrounds can skew results |
-| Seeing when a pin was made | Without a date, users can't tell old trends from new ones, or originals from reposts | Feature 6: a "first seen" date on the close-up, labeled with its source (photo metadata or ingestion time) | The catalog has no capture dates, so it shows ingestion time and says so |
-| Saving one pin to several boards at once, like a checklist (a commenter said this used to exist) | Re-opening the save menu for each board is slow and breaks flow | Feature 8: checklist save to multiple boards in one action, with an undo toast | None beyond scope: it's a local demo with no accounts |
+| A color picker | People often remember an outfit by its color, not by a word for it | Feature 7: color picker in the search bar, ranked by perceptual color distance | Dominant colors come from the photo's center, so backgrounds can still skew results |
+| Seeing when a pin was made | Without a date, users can't tell old trends from new ones, or originals from reposts | Feature 6: a "first seen" date on collapsed duplicates, labeled with its source (photo metadata or ingestion time) | The catalog has no capture dates, so it shows ingestion time and says so |
+| Saving one pin to several boards at once, like a checklist (a commenter said this used to exist) | Re-opening the save menu for each board is slow and breaks flow | Feature 8: checklist save to multiple boards in one action, with an undo toast | Single local user for boards |
 
 ## 3. Prior art and what's different
 
-_To be written._ The five differentiators:
+| Prior art | What it does | How MoodBoards differs |
+|---|---|---|
+| Pinterest **Shop the Look** (arXiv 2006.10866) | Detects products in a scene image and retrieves visually similar shoppable items at scale | MoodBoards works from a *whole board* (many images) and splits it into distinct aesthetics before matching |
+| Pinterest **Complete the Look** (arXiv 2006.10792; engineering blog) | Learns which products are compatible from scene images | No scene data here, so compatibility is approximated by shared style in embedding space, optionally tuned to a board aesthetic. Stated as a limit |
+| **Google Doppl** (TechCrunch, 2025) | Lets people see how an outfit might look on them | MoodBoards does discovery and planning, not virtual try-on |
+| CLIP + FAISS repos (FasRec-AI-Engine, Fashion_Recommendation_model_demo, Runway) | Photo → similar items, outfit compatibility demos | Adds board-level taste, a grounded tool-calling agent with evals, provenance labels, repost credit, and trip planning |
+| Pinterest **group boards** and **Place Pins** | Collaborative boards with collaborator permissions; pins tied to places | Trips add roles, revocable invite links, a blended group taste, real weather, votes and packing lists |
+| **Wanderlog, Stippl, Mindtrip** | Group itineraries and AI trip planning | They plan *where to go*; MoodBoards plans *what to wear together* for each event, given the weather |
+| Reported Pinterest **Trip Boards / trip-planning ads** (AuditSocials, *unconfirmed by Pinterest*) | Travel pin formats | MoodBoards' trips are an outfit-planning layer that could sit on such a surface |
 
-1. Board-level taste: many images become a taste profile with distinct aesthetics
-2. An agent that makes real tool calls, plus an eval harness
-3. AI labels users can see and trust: evidence-based, visible on the grid, with an appeal path
-4. Repost detection that credits the original creator
-5. Group trip outfit planning: a shared aesthetic plus real weather become coordinated outfits and packing lists
+The five differentiators:
+
+1. **Board-level taste**: many images become a taste profile with distinct aesthetics (tuned thresholds, section 6)
+2. **An agent with real tool calls plus an eval harness**: every product shown must come from a tool call that turn
+3. **AI labels users can see and trust**: evidence-only, on the grid, click-to-explain (light version)
+4. **Repost detection that credits the original**: two-signal rule measured at 84% recall with 0 false matches
+5. **Group trip outfit planning**: shared aesthetic + real weather → coordinated outfits and packing lists
 
 ## 4. Features and why
 
@@ -384,11 +406,23 @@ _Summary of [THREAT_MODEL.md](THREAT_MODEL.md): features 5 and 9._
 
 ## 8. How I used AI tools and how I validated their output
 
-_To be written in my own words._
+> _Draft. Tanvi: rewrite this in your own words before sharing._
+
+I built MoodBoards with Claude Code (an AI coding assistant) as a pair programmer: I set the product direction, priorities and feedback, and it proposed and wrote most of the code. I didn't trust its output by default. These are the checks that caught real mistakes:
+
+- **Tests for every endpoint and component** (about 145 backend and 44 frontend). A unit test caught the first board-splitting rule splitting a single tight group of photos.
+- **Measuring instead of guessing.** Several first-guess thresholds were wrong and were replaced with measured ones:
+  - A repost threshold that would have chained 322 unrelated images into one group.
+  - A sandal cutoff that caught 1 shoe instead of about 97 sandals.
+  - Board thresholds that split 90% of one-look boards.
+  - A unisex band that made Menswear and Womenswear look the same.
+- **Looking at results by eye.** Contact sheets of the closest "duplicate" pairs showed look-alike trousers being flagged; rendered pastel results showed beige being counted as pastel. Both led to rule changes.
+- **Live checks against real data**: real catalog searches, real Open-Meteo forecasts, real C2PA signatures, and an eval report that marks the assistant as *skipped* rather than faking results when the local model isn't available.
+- **Honesty rules in the code**: no invented prices, products, dates or links. Every number in this README comes from the eval report or a measurement described next to it.
 
 ## 9. Learning curve
 
-_Pulled from [LEARNING_LOG.md](LEARNING_LOG.md), in my own words._
+_To be written from [LEARNING_LOG.md](LEARNING_LOG.md) in my own words. This section stays empty until then rather than inventing experiences._
 
 ## 10. Limitations and next steps
 
@@ -413,11 +447,81 @@ Some features are built here in a reduced but honest form, because the full vers
 
 ## 11. Sources
 
-_Grouped list with one line each on what it informed. Short and mirror links will be replaced with canonical URLs. Dataset, model, API, and library licenses are recorded in [DATA.md](DATA.md)._
+Paraphrased throughout; no long quotes. Links were checked on 2026-10-28.
+
+**Pinterest context**
+- [Pinterest Software Engineer Intern 2027 (USA) posting](https://www.workingnomads.com/jobs/software-engineer-intern-2027-usa-pinterest): the languages and stack (Python, TypeScript/React) and what the role values
+- [Pinterest Q2 2026 earnings call transcript](https://s204.q4cdn.com/369458543/files/doc_earnings/2026/q2/transcript/Q2-2026-Transcript.pdf): travel as a growing category; investment in visual search and AI
+- [TechCrunch: Pinterest teases Restyle (Sept 2026)](https://techcrunch.com/2026/09/17/pinterest-teases-a-new-restyle-feature-that-lets-you-redesign-your-room-with-ai/): Pinterest's direction with generative visual tools
+- [Pulse 2.0: Pinterest Visual Search Ads](https://pulse2.com/pinterest-unveils-visual-search-ads-and-new-ai-powered-advertising-tools/): visual search as a commercial priority
+
+**Prior art**
+- [Shop The Look (arXiv 2006.10866)](https://arxiv.org/abs/2006.10866): large-scale visual shopping retrieval at Pinterest
+- [Bootstrapping Complete The Look at Pinterest (arXiv 2006.10792)](https://arxiv.org/abs/2006.10792): learned complementary-item compatibility; why feature 3 calls its approach an approximation
+- [Pinterest Engineering: Introducing Complete the Look](https://medium.com/pinterest-engineering/introducing-complete-the-look-a-scene-based-complementary-recommendation-system-eb891c3fe88): scene-based complementary recommendations
+- [FasRec AI Engine](https://github.com/HimasagarU/FasRec-AI-Engine), [Fashion_Recommendation_model_demo](https://github.com/rahul370139/Fashion_Recommendation_model_demo), [Runway](https://github.com/NeilP211/runway): existing CLIP/FAISS fashion demos that MoodBoards builds past
+- [TechCrunch: Google launches Doppl](https://techcrunch.com/2025/06/26/google-launches-doppl-a-new-app-that-lets-you-visualize-how-an-outfit-might-look-on-you/): virtual try-on as adjacent prior art
+- [Search Engine Journal: group board collaboration tools](https://www.searchenginejournal.com/pinterest-enhances-group-boards-with-new-collaboration-tools/327189/) and [Pinterest Create: board fundamentals](https://create.pinterest.com/en-gb/blog/board-fundamentals/): group boards and collaborator permissions (the roles model in feature 9)
+- [TechCrunch: Pinterest Place Pins (2013)](https://techcrunch.com/2013/11/20/pinterest-place-pins/): Pinterest's earlier travel and place features
+- [AuditSocials: reported Trip Planning Ads and Trip Boards](https://www.auditsocials.com/blog/pinterest-trip-planning-ads-may-2026-travel-pin-format-hotel-disclosure): a *reported, unconfirmed* travel surface
+- [Stippl vs Wanderlog (2026)](https://www.stippl.io/blog/stippl-vs-wanderlog), [Wanderlog vs Mindtrip (2026)](https://monkeytravel.app/it/blog/wanderlog-vs-mindtrip-2026), [Best apps for group trips (2026)](https://vacation-planner-blog.pages.dev/blog/best-apps-for-group-trips/): what group-trip tools cover, and the gap around outfits
+
+**User complaints and trends**
+- [404 Media: Pinterest Is Drowning in a Sea of AI Slop and Auto-Moderation](https://www.404media.co/pinterest-is-drowning-in-a-sea-of-ai-slop-and-auto-moderation/): AI content flooding feeds, mislabeling, reposts, moderation frustration
+- [Geo.tv: Pinterest still facing AI problems](https://www.geo.tv/latest/652294-pinterest-still-facing-ai-problems-amid-push-to-become-social-media-platform): mislabeling and moderation complaints
+- [European Business Review (CNN reporting): users push back as AI images flood the platform](https://www.europeanbusinessreview.com/pinterest-users-push-back-as-ai-images-flood-the-popular-platform/): AI images and AI recipe results
+- [TechDefused (Wired reporting)](https://techdefused.com/a/9yJs0na/pinterest-users-say-ai-slop-is-breaking-the-platforms-promise-of-real-inspiratio): labels hidden behind a click and missing on ads. ⚠️ A republication; I couldn't locate the original Wired URL
+- [GB News: Pinterest AI content controls](https://www.gbnews.com/tech/pinterest-feature-blocks-ai-content) and [TechCrunch: Pinterest tools to fight AI slop](https://techcrunch.com/2025/04/30/pinterest-launches-new-tools-to-fight-ai-slop/): Pinterest's own labeling and see-fewer controls
+- [PiunikaWeb: Pinterest ads complaints](https://piunikaweb.com/2025/11/24/pinterest-ads-spam/): ad load (not addressed here)
+- [TechRound: Pinterest banning random accounts](https://techround.co.uk/news/pinterest-banning-random-accounts-heres-why/): unexplained suspensions
+- [r/Pinterest post cataloging stolen content](https://www.reddit.com/r/Pinterest/comments/1spf7ol/): reposts without credit. ⚠️ The original post's content couldn't be verified by an automated check; [archived snapshot](https://reddit.sentinel-team.org/posts/1spf7ol/snapshots/2026-04-19T05%3A55%3A55.560181Z)
+- [r/Pinterest: dream features thread](https://www.reddit.com/r/Pinterest/comments/1tp1tkh/what_are_your_dream_features_on_pinterest/) *(anecdotal)*: color picker, multi-board save, sub-boards, pin dates
+- [AOL: "family trip vision board" trend (Pinterest 2026 Parenting Trend Report)](https://www.aol.com/articles/family-trip-vision-board-trending-210000113.html): travel planning on Pinterest
+
+**Models, data, APIs, and their licenses**
+
+| Resource | License / terms | Use here |
+|---|---|---|
+| [clothing-dataset](https://github.com/alexeygrigorev/clothing-dataset) | CC0-1.0 | The catalog (see [DATA.md](DATA.md)) |
+| [Marqo-FashionCLIP](https://huggingface.co/Marqo/marqo-fashionCLIP) | Apache-2.0 | Image and text embeddings |
+| [Qwen3-8B](https://huggingface.co/Qwen/Qwen3-8B) via [Ollama](https://ollama.com) | Apache-2.0 (Ollama: MIT) | The assistant |
+| [Qwen2.5-VL-7B-Instruct](https://huggingface.co/Qwen/Qwen2.5-VL-7B-Instruct) via Ollama | Apache-2.0 | Garment descriptions, shopping queries |
+| [Open-Meteo](https://open-meteo.com/en/docs) (forecast, [archive](https://open-meteo.com/en/docs/historical-weather-api), [geocoding](https://open-meteo.com/en/docs/geocoding-api)) | Data CC BY 4.0 with "Weather data by Open-Meteo.com" + link wherever shown ([licence](https://open-meteo.com/en/licence)); free API for non-commercial use under 10,000 calls/day ([terms](https://open-meteo.com/en/terms)). The geocoding repo lists CC BY-NC 4.0 | Trip weather and destination search |
+| [Gestalt design tokens](https://github.com/pinterest/gestalt) | Apache-2.0 | Colors and rounding |
+| [FAISS](https://github.com/facebookresearch/faiss) (faiss-cpu) | MIT | Vector search |
+| [FastAPI](https://fastapi.tiangolo.com/) | MIT | API |
+| [Uvicorn](https://www.uvicorn.org/) | BSD-3-Clause | Server |
+| [Pydantic](https://docs.pydantic.dev/) / pydantic-settings | MIT | Validation, settings |
+| [PyTorch](https://pytorch.org/) | BSD-style (Apache-2.0, BSD and others) | Model runtime |
+| [OpenCLIP](https://github.com/mlfoundations/open_clip) | MIT | Model loading |
+| [LangGraph](https://langchain-ai.github.io/langgraph/), [langchain-core](https://python.langchain.com/), [langchain-ollama](https://python.langchain.com/docs/integrations/chat/ollama/) | MIT | Agent graph |
+| [ollama-python](https://github.com/ollama/ollama-python) | MIT | Vision model client |
+| [c2pa-python](https://github.com/contentauth/c2pa-python) | MIT OR Apache-2.0 | Content Credentials |
+| [cryptography](https://cryptography.io/) | Apache-2.0 OR BSD-3-Clause | Test signing certificates |
+| [ImageHash](https://github.com/JohannesBuchner/imagehash) | BSD-2-Clause | pHash |
+| [Pillow](https://pillow.readthedocs.io/) | MIT-CMU | Images, EXIF, XMP |
+| [NumPy](https://numpy.org/) / [SciPy](https://scipy.org/) | BSD-3-Clause | Math |
+| [python-multipart](https://github.com/Kludex/python-multipart) | Apache-2.0 | Uploads |
+| [PyYAML](https://pyyaml.org/) | MIT | Eval prompts |
+| [pytest](https://docs.pytest.org/), [HTTPX](https://www.python-httpx.org/) | MIT, BSD-3-Clause | Tests |
+| [React](https://react.dev/), [Vite](https://vite.dev/), [Vitest](https://vitest.dev/), [Testing Library](https://testing-library.com/), [jsdom](https://github.com/jsdom/jsdom) | MIT | Frontend |
+| [TypeScript](https://www.typescriptlang.org/) | Apache-2.0 | Frontend |
+
+⚠️ **Links to double-check by hand:** the Medium Complete the Look post (blocked automated checks with a 403, not necessarily dead), the TechDefused republication (Wired original not found), and the Reddit stolen-content post (loaded, but its content couldn't be confirmed).
 
 ## 12. Where this fits in Pinterest
 
-_Feature-to-surface mapping: written once features are built._
+In words only; the app uses no Pinterest screenshots.
+
+| MoodBoards feature | Pinterest surface it would upgrade | What a Pinner would notice, and why it matters |
+|---|---|---|
+| Board analysis + Complete the look | A board's "More ideas" recommendations and the Pin close-up | Recommendations that respect *each* look on a mixed board instead of a blended average, so ideas feel like the board, not like everyone's board |
+| Assistant | Pinterest Assistant | Answers whose every product is a real, tappable Pin from a search it just ran, so people can trust what it recommends |
+| AI labels | Labels on Pin cards in the home feed and search, and the creator appeal flow | The label is on the card, and tapping it says exactly why, so people decide what to trust without guessing |
+| Repost credit | Attribution on the Pin close-up | Copies collapse into one Pin that credits the original, or honestly says the original is unclear, so creators get credit and feeds aren't full of duplicates |
+| Color search + mood picker | The search bar | Pick an exact shade (or a mood) instead of guessing words, a long-requested way to search |
+| Multi-board save + undo toast | The Save flow | Save to several boards and sub-boards in one tap, with an Undo and no pop-ups, so saving stays fast |
+| Trip outfit planning | Group boards | A group board for a trip that also plans what everyone wears for the real weather, so the planning stays on Pinterest |
 
 ## 13. Disclaimer
 
