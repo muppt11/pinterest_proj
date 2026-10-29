@@ -314,20 +314,24 @@ The five differentiators:
 
 ### Shop similar (7c)
 
-**What it does.** On an item's close-up, a "Shop similar" button opens Google Shopping in a new tab. The search query is built only from the item's real data: its dominant color's name and its category, for example "burgundy t-shirt". A second link opens Google Lens, where you can drop in the image yourself.
+**What it does.** "Shop this exact look with Google Lens" opens Google's visual search results for the item's **photo itself**, so the matches look as close as possible. A second link searches Google Shopping by words. The query comes from the local vision model's description of the photo when it's available, otherwise from the item's main color and category.
 
-**Why it's here.** The catalog is an open dataset with no stores or prices, but finding something you can actually buy is the natural next step after "I love this."
+**How the image search works.**
+- Google can't fetch images from `localhost`, so a public image URL isn't an option when running locally.
+- Uploading from the browser failed with **400/403**. Testing showed Google rejects uploads that carry a website's `Origin` header, and browsers always add one to cross-site form posts.
+- So the **backend** uploads the catalog photo to Lens (a server request has no Origin), receives Google's 303 redirect to the results page, and the tab opens that URL.
+- Fallbacks: the browser posts the image with a no-referrer policy (`Origin: null`, which Google accepts in tests), and failing that, it copies the photo for pasting.
+- The Lens upload endpoint isn't officially documented, so these fallbacks stay in place.
 
 **Why not show results inside the app.**
 - Google has no free official API for Lens or Shopping results.
 - Scraping Google breaks its terms and this project's no-scraping rule.
 - Paid APIs break the no-paid-APIs rule.
-- Catalog images live on localhost, which Google can't fetch.
 
-So MoodBoards hands off to Google with a transparent query and never displays prices, stores, or availability it hasn't verified. The button says where it goes ("Opens Google Shopping in a new tab") and that results aren't checked by MoodBoards.
+So MoodBoards hands off to Google and never displays prices, stores, or availability it hasn't verified. The UI says results aren't checked by MoodBoards.
 
 **Alternatives considered.**
-- Google Cloud Vision Web Detection: paid after the free tier, and it needs an API key and a public image URL.
+- Google Cloud Vision Web Detection: paid, and needs an API key.
 - SerpAPI: paid.
 - Retailer affiliate feeds: out of scope, and they bring commercial terms.
 
