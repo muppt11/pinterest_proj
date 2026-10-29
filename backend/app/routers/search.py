@@ -7,7 +7,8 @@ import numpy as np
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
 
 from app.deps import FocusFilter, get_catalog, get_embedder, get_focus
-from app.models import Item, ItemPage, ScoredItem, SearchResults, UploadRepost
+from app.models import Item, ItemPage, ProvenanceLabel, ScoredItem, SearchResults, UploadRepost
+from app.services.upload_pipeline import process_upload
 from app.services.color import rgb_to_lab
 from app.services.color_families import items_in_families
 from app.services.color_search import COLOR_NAMES, color_index
@@ -155,7 +156,9 @@ async def search_image(
 ) -> SearchResults:
     """Search by example photo. The upload is embedded in memory and not stored."""
     _check_category(catalog, category)
-    _, decoded = await read_image(image)
+    data, _ = await read_image(image)
+    upload = process_upload(data, image.content_type or "image/jpeg")  # label first, then strip GPS
+    decoded = upload.image
     vector = embedder.embed_images([decoded])[0]
     results = _scored(catalog.search(vector, k=k, category=category, exclude_ids=focus.excluded))
     repost = None
@@ -170,4 +173,6 @@ async def search_image(
             first_seen=c.first_seen,
             date_source=c.date_source,
         )
-    return SearchResults(results=results, repost_of=repost)
+    return SearchResults(
+        results=results, repost_of=repost, upload_provenance=ProvenanceLabel(**upload.provenance.to_dict())
+    )

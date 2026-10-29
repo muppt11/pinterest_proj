@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { altText, api, imageSrc, profileApi, type BoardAnalysis, type BoardContext, type Item, type Me, type SearchResults } from "./api/client";
 import { AssistantPanel } from "./components/AssistantPanel";
+import { LabelBadge } from "./components/LabelBadge";
 import { BoardsPage } from "./components/BoardsPage";
 import { CharactersPage } from "./components/CharactersPage";
 import { MoodPage } from "./components/MoodPage";
@@ -28,6 +29,7 @@ type FeedPage = {
   lowRelevance?: boolean;
   repostOf?: SearchResults["repost_of"];
   understood?: string[];
+  uploadProvenance?: SearchResults["upload_provenance"];
 };
 
 const PAGE_SIZE = 50;
@@ -54,6 +56,7 @@ export default function App() {
   const [showWeak, setShowWeak] = useState(false);
   const [repostOf, setRepostOf] = useState<SearchResults["repost_of"]>(null);
   const [understood, setUnderstood] = useState<string[]>([]);
+  const [uploadProvenance, setUploadProvenance] = useState<SearchResults["upload_provenance"]>(null);
   const [assistantOpen, setAssistantOpen] = useState(false);
   const [lastAnalysis, setLastAnalysis] = useState<BoardAnalysis | null>(null);
   const focus = useFocus();
@@ -89,6 +92,7 @@ export default function App() {
     setShowWeak(false);
     setRepostOf(null);
     setUnderstood([]);
+    setUploadProvenance(null);
     setLoading(true);
     setError(null);
     try {
@@ -98,6 +102,7 @@ export default function App() {
       setLowRelevance(page.lowRelevance ?? false);
       setRepostOf(page.repostOf ?? null);
       setUnderstood(page.understood ?? []);
+      setUploadProvenance(page.uploadProvenance ?? null);
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -215,7 +220,7 @@ export default function App() {
     rerun.current = () => searchImage(file);
     return run({ kind: "image", fileName: file.name }, async () => {
       const r = await api.searchImage(file);
-      return { items: r.results, total: r.results.length, repostOf: r.repost_of };
+      return { items: r.results, total: r.results.length, repostOf: r.repost_of, uploadProvenance: r.upload_provenance };
     });
   };
 
@@ -330,6 +335,11 @@ export default function App() {
                   <li key={u}>{u}</li>
                 ))}
               </ul>
+            )}
+            {uploadProvenance && feed.kind === "image" && (
+              <p className="mb-upload-label">
+                Your photo: <LabelBadge provenance={uploadProvenance} />
+              </p>
             )}
             {repostOf && feed.kind === "image" && (
               <div className="mb-repost-banner" role="status">

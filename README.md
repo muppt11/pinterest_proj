@@ -53,7 +53,7 @@ _To be written._ The five differentiators:
 | 2 | Board analysis (k-means, k by silhouette score) | done |
 | 3 | Complete the look | done |
 | 4 | Assistant (LangGraph + Ollama) | done (live run waits on model download) |
-| 5 | AI labels, review queue, "Fewer AI images" toggle | planned |
+| 5 | AI labels from provenance metadata (light version: labels + explanations; no review queue or toggle) | done |
 | 6 | Repost detection + original credit, "first seen" date on every item | done |
 | 7 | Search by color (Lab k-means, Delta E 2000) | done |
 | 7b | Mood picker: color wheel + aesthetic → curated items | done |
@@ -179,6 +179,21 @@ _To be written._ The five differentiators:
 **Why CIEDE2000 instead of RGB distance.** RGB distance overstates differences in blues and understates them in greens. CIEDE2000 is the industry standard for perceived difference. My implementation is checked against 12 published reference pairs from Sharma et al. (2005) to 4 decimal places.
 
 **Measured by.** Feature 10: the mean Delta E of the top 20 results versus random items.
+
+### 5. AI labels users can trust (light version)
+
+**Problem.** AI images flood feeds, labels hide behind a click, and wrong labels stick to human-made work (section 2).
+
+**Approach.**
+- The label comes **only from provenance metadata**, never from pixels:
+  - **AI-generated:** a valid C2PA (Content Credentials) manifest, or an IPTC `DigitalSourceType` tag, declares an AI source such as `trainedAlgorithmicMedia`.
+  - **Human-made (verified):** a *validly signed* C2PA manifest declares `digitalCapture`. An unsigned IPTC claim of camera capture stays **Unknown**, because it's trivial to fake.
+  - **Unknown:** the default, also used when a manifest fails validation, for example because the file was edited after signing.
+- The label sits **on the grid card**. Unknown shows as a quiet "ⓘ" so it doesn't crowd the grid, and clicking any label explains which field was found, or that none was.
+- **Uploads:** provenance is read from the *original bytes before* GPS is stripped and the image re-encoded. Re-encoding also drops the C2PA manifest, so this order is required. A test signs an image, strips it, and checks that the label survives while the stripped copy no longer carries the manifest.
+- Tests generate a throwaway certificate authority and sign real C2PA manifests with `c2pa-python`. Every catalog photo is honestly Unknown: the dataset has no metadata at all.
+
+**Scoped out (by choice).** The creator review queue, the reviewer page, and the "Fewer AI images" toggle from the original spec. The catalog has no AI-labeled images for a toggle to act on, and I prioritized search accuracy and trip planning instead. With Pinterest's platform, labels would come from Content Credentials at upload across all Pins, plus classifier signals feeding a human review queue (section 10).
 
 ### 6. Repost detection and original credit
 

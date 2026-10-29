@@ -14,6 +14,14 @@ export interface Item {
   colors?: string[];
   /** set when near-duplicate copies of this image exist (feature 6) */
   repost?: RepostInfo | null;
+  /** evidence-based AI label (feature 5) */
+  provenance?: ProvenanceLabel;
+}
+
+export interface ProvenanceLabel {
+  label: "ai_generated" | "human_verified" | "unknown";
+  explanation: string;
+  evidence: { source: string; field: string; value: string; note?: string }[];
 }
 
 export interface RepostInfo {
@@ -137,6 +145,8 @@ export interface SearchResults {
   understood?: string[];
   /** Photo search: your upload is a repost of this catalog image. */
   repost_of?: { original: Item; reason: string; first_seen: string | null; date_source: string | null } | null;
+  /** Photo search: the label read from your uploaded photo's original bytes. */
+  upload_provenance?: ProvenanceLabel | null;
 }
 
 export interface Aesthetic {

@@ -1,0 +1,60 @@
+.mb-label-wrap {
+  position: relative;
+  display: inline-block;
+  pointer-events: auto;
+}
+
+.mb-label {
+  padding: 4px 10px;
+  border: 0;
+  border-radius: var(--mb-radius-pill);
+  color: #fff;
+  font-size: 0.72rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.mb-label-ai_generated {
+  background: var(--mb-label-ai);
+}
+
+.mb-label-human_verified {
+  background: var(--mb-label-human);
+}
+
+.mb-label-unknown {
+  background: rgb(0 0 0 / 0.55);
+}
+
+.mb-label.is-quiet {
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  font-size: 0.85rem;
+  line-height: 24px;
+}
+
+.mb-label-pop {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 0;
+  z-index: 25;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: min(280px, 70vw);
+  padding: 12px 14px;
+  border-radius: var(--mb-radius-card);
+  background: var(--mb-surface);
+  color: var(--mb-ink);
+  box-shadow: 0 8px 24px rgb(0 0 0 / 0.2);
+  font-size: 0.82rem;
+  white-space: normal;
+}
+
+.mb-label-evidence {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  color: var(--mb-ink-muted);
+}

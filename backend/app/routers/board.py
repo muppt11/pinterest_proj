@@ -12,6 +12,7 @@ from app.services.aesthetics import bank_for, style_tags
 from app.services.board import choose_clusters
 from app.services.catalog import Catalog
 from app.services.embedder import Embedder
+from app.services.upload_pipeline import process_upload
 from app.uploads import read_image
 
 router = APIRouter(prefix="/board", tags=["board"])
@@ -30,7 +31,8 @@ async def analyze_board(
     """Embed the board, split it into 1–3 aesthetics by silhouette score, and match each to the catalog."""
     if not MIN_IMAGES <= len(images) <= MAX_IMAGES:
         raise HTTPException(status_code=422, detail=f"Upload between {MIN_IMAGES} and {MAX_IMAGES} images.")
-    decoded = [(await read_image(upload))[1] for upload in images]
+    # Each upload: provenance read from the original bytes, then GPS stripped, before any processing.
+    decoded = [process_upload((await read_image(u))[0], u.content_type or "image/jpeg").image for u in images]
     vectors = embedder.embed_images(decoded)
 
     clustering = choose_clusters(vectors)

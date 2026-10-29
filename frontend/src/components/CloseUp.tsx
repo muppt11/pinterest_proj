@@ -2,6 +2,7 @@ import { useContext, useEffect, useRef, useState } from "react";
 import { SavesContextOptional } from "../saves";
 import { altText, api, imageSrc, repostLabel, type BoardContext, type Item, type ScoredItem } from "../api/client";
 import { CompleteTheLook } from "./CompleteTheLook";
+import { LabelBadge } from "./LabelBadge";
 import { ShopSimilar } from "./ShopSimilar";
 import { FeatureTip } from "./FeatureTip";
 import { ItemGrid } from "./ItemGrid";
@@ -76,6 +77,7 @@ export function CloseUp({ itemId, board, onBack, onOpen }: CloseUpProps) {
             )}
           </div>
           <h1 className="mb-closeup-title">{item.category}</h1>
+          {item.provenance && <LabelBadge provenance={item.provenance} />}
           {item.repost && (
             <p className="mb-closeup-repost">
               <strong>{repostLabel(item)}</strong>

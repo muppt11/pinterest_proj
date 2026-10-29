@@ -17,6 +17,20 @@ class RepostInfo(BaseModel):
     member_ids: list[str]
 
 
+class ProvenanceLabel(BaseModel):
+    """Evidence-based AI label (feature 5). Never guessed from pixels."""
+
+    label: str  # "ai_generated" | "human_verified" | "unknown"
+    explanation: str
+    evidence: list[dict] = []
+
+
+CATALOG_PROVENANCE = ProvenanceLabel(
+    label="unknown",
+    explanation="No provenance metadata: the catalog's photos carry no Content Credentials, IPTC tags, or EXIF at all, so MoodBoards doesn't guess.",
+)
+
+
 class Item(BaseModel):
     """A catalog item. Only fields the dataset actually has, plus image size for layout."""
 
@@ -28,6 +42,7 @@ class Item(BaseModel):
     height: int
     colors: list[str] = []  # dominant colors (hex), heaviest first, extracted from the image at index time
     repost: RepostInfo | None = None  # set when near-duplicate copies of this image exist
+    provenance: ProvenanceLabel = CATALOG_PROVENANCE
 
     @classmethod
     def from_meta(cls, meta: dict[str, Any]) -> "Item":
@@ -40,6 +55,7 @@ class Item(BaseModel):
             height=meta["height"],
             colors=[c["hex"] for c in meta.get("colors", [])[:3]],
             repost=meta.get("repost"),
+            provenance=meta.get("provenance") or CATALOG_PROVENANCE,
         )
 
 
@@ -65,6 +81,8 @@ class SearchResults(BaseModel):
     understood: list[str] = []
     # For photo searches: set when the uploaded photo is a repost of a catalog image (credit goes to the catalog).
     repost_of: "UploadRepost | None" = None
+    # For photo searches: the uploaded photo's own label, read from its original bytes.
+    upload_provenance: "ProvenanceLabel | None" = None
 
 
 class UploadRepost(BaseModel):

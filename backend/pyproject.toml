@@ -17,6 +17,7 @@ dependencies = [
     "langchain-ollama>=0.3",
     "langchain-core>=0.3",
     "imagehash>=4.3",
+    "c2pa-python>=0.10",
 ]
 
 [dependency-groups]
