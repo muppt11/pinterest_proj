@@ -316,12 +316,11 @@ The five differentiators:
 
 **What it does.** "Shop this exact look with Google Lens" opens Google's visual search results for the item's **photo itself**, so the matches look as close as possible. A second link searches Google Shopping by words. The query comes from the local vision model's description of the photo when it's available, otherwise from the item's main color and category.
 
-**How the image search works.**
-- Google can't fetch images from `localhost`, so a public image URL isn't an option when running locally.
-- Uploading from the browser failed with **400/403**. Testing showed Google rejects uploads that carry a website's `Origin` header, and browsers always add one to cross-site form posts.
-- So the **backend** uploads the catalog photo to Lens (a server request has no Origin), receives Google's 303 redirect to the results page, and the tab opens that URL.
-- Fallbacks: the browser posts the image with a no-referrer policy (`Origin: null`, which Google accepts in tests), and failing that, it copies the photo for pasting.
-- The Lens upload endpoint isn't officially documented, so these fallbacks stay in place.
+**How the image search works.** Only Google's public entry points are used:
+- **Hosted (public URL):** the button links to Lens's search-by-image-URL page (`lens.google.com/uploadbyurl?url=…`). Google fetches the public photo and searches automatically.
+- **Local:** Google can't fetch images from `localhost`, so the button copies the photo and opens Lens for a one-key paste.
+
+I tried automating the local case: a browser upload, then a server-side upload, to Lens's undocumented upload endpoint. Google deliberately rejects cross-site uploads, and getting around that would mean working around its protections, so I removed those attempts. The server-side version also only "worked" for the server: the results page opened without the image, because Google ties an upload to whoever made it.
 
 **Why not show results inside the app.**
 - Google has no free official API for Lens or Shopping results.

@@ -1,7 +1,7 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import App from "../App";
 import { hslToHex, MoodPage, wheelPoint } from "../components/MoodPage";
-import { searchLensWithImage, ShopSimilar } from "../components/ShopSimilar";
+import { isPublicOrigin, lensUrlFor, ShopSimilar } from "../components/ShopSimilar";
 
 const item = (id: string, category: string) => ({ id, category, image_url: `/images/${id}.jpg`, kids: false, width: 4, height: 5, colors: ["#9caf88"] });
 const match = (id: string, category: string) => ({ ...item(id, category), score: 0.8, color_score: 0.8, delta_e: 7.8, matched_color: "#a1b18c", text_score: null });
@@ -75,79 +75,24 @@ describe("MoodPage", () => {
   });
 });
 
-describe("searchLensWithImage", () => {
-  it("opens a tab inside the click and POSTs the image file itself to Lens", async () => {
-    const tab = { opener: {} };
-    const open = vi.spyOn(window, "open").mockReturnValue(tab as unknown as Window);
-    vi.stubGlobal("fetch", vi.fn(async () => new Response(new Blob(["jpegbytes"], { type: "image/jpeg" }))));
-    class FakeDataTransfer {
-      private list: File[] = [];
-      items = { add: (f: File) => this.list.push(f) };
-      get files() {
-        return this.list as unknown as FileList;
-      }
-    }
-    vi.stubGlobal("DataTransfer", FakeDataTransfer);
-    let submitted: HTMLFormElement | null = null;
-    let fileName = "";
-    let policyAtSubmit: string | null = null;
-    vi.spyOn(HTMLFormElement.prototype, "submit").mockImplementation(function (this: HTMLFormElement) {
-      submitted = this;
-      policyAtSubmit = document.querySelector('meta[name="referrer"]')?.getAttribute("content") ?? null;
-      fileName = (this.querySelector("input") as HTMLInputElement & { files: File[] }).files[0].name;
-    });
-    Object.defineProperty(HTMLInputElement.prototype, "files", { configurable: true, writable: true, value: null });
-
-    await searchLensWithImage("/api/images/a.jpg");
-    expect(open).toHaveBeenCalledWith("", "mb-lens");
-    expect(tab.opener).toBeNull();
-    const form = submitted as unknown as HTMLFormElement;
-    expect(form.method.toLowerCase()).toBe("post");
-    expect(form.enctype).toBe("multipart/form-data");
-    expect(form.action).toMatch(/^https:\/\/lens\.google\.com\/v3\/upload\?/);
-    expect(form.target).toBe("mb-lens");
-    expect(fileName).toBe("item.jpg");
-    // Sent with no referrer, so the browser's Origin header is "null", which Google accepts.
-    expect(policyAtSubmit).toBe("no-referrer");
-    open.mockRestore();
-  });
-});
-
-describe("Shop this exact look", () => {
-  it("opens Google's visual results for the photo via the server upload", async () => {
-    const tab = { opener: {}, location: { href: "" } };
-    const open = vi.spyOn(window, "open").mockReturnValue(tab as unknown as Window);
-    routes({
-      "/api/items/a/shop-links": { query: "q", query_source: "color + category", color_name: null, google_shopping: "https://www.google.com/search?tbm=shop&q=q", google_lens: "", google_images: "" },
-      "/api/items/a/lens": { url: "https://www.google.com/search?vsrid=abc&udm=26" },
-    });
-    render(<ShopSimilar itemId="a" imageUrl="/api/images/a.jpg" />);
-    fireEvent.click(screen.getByRole("button", { name: /Shop this exact look with Google Lens/ }));
-    await waitFor(() => expect(tab.location.href).toBe("https://www.google.com/search?vsrid=abc&udm=26"));
-    expect(open).toHaveBeenCalledWith("", "mb-lens");
-    expect(tab.opener).toBeNull();
-    open.mockRestore();
-  });
-});
-
 describe("ShopSimilar", () => {
-  it("searches by the photo first (Lens), with a keyword search as the fallback", async () => {
+  it("locally copies the photo for Lens; offers a keyword search too", async () => {
     routes({
-      "/api/items/a/shop-links?detailed=false": {
-        query: "sage green shirt",
-        query_source: "color + category",
-        color_name: "sage green",
-        google_shopping: "https://www.google.com/search?tbm=shop&q=sage+green+shirt",
-        google_lens: "https://lens.google.com/",
-        google_images: "https://www.google.com/imghp",
-      },
+      "/api/items/a/shop-links": { query: "sage green shirt", query_source: "color + category", color_name: "sage green", google_shopping: "https://www.google.com/search?tbm=shop&q=sage+green+shirt", google_lens: "", google_images: "" },
     });
     render(<ShopSimilar itemId="a" imageUrl="/api/images/a.jpg" />);
-    expect(screen.getByRole("button", { name: /Shop this exact look with Google Lens/ })).toBeInTheDocument();
-    expect(screen.getByText(/Sends this photo itself to Google Lens/)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Shop this exact look with Google Lens" })).toBeInTheDocument();
+    expect(screen.getByText(/one-key paste into Lens/)).toBeInTheDocument();
     const words = await screen.findByRole("link", { name: /Or search by words: “sage green shirt”/ });
-    expect(words).toHaveAttribute("target", "_blank");
     expect(words).toHaveAttribute("rel", "noopener noreferrer");
   });
 
+  it("on a public deployment, links to Lens's search-by-image-URL", () => {
+    expect(isPublicOrigin("localhost")).toBe(false);
+    expect(isPublicOrigin("192.168.1.20")).toBe(false);
+    expect(isPublicOrigin("moodboards.hf.space")).toBe(true);
+    expect(lensUrlFor("https://moodboards.hf.space/api/images/a.jpg")).toBe(
+      "https://lens.google.com/uploadbyurl?url=https%3A%2F%2Fmoodboards.hf.space%2Fapi%2Fimages%2Fa.jpg",
+    );
+  });
 });
