@@ -31,6 +31,12 @@ class Catalog:
         self.index = index
         self.items = items
         self._row_by_id = {item["id"]: row for row, item in enumerate(items)}
+        # Repost groups (feature 6). Each item dict gets a derived "repost" entry for the API to show.
+        from app.services.reposts import RepostIndex
+
+        self.reposts = RepostIndex(items, self.matrix if items and "phash" in items[0] else None)
+        for item in items:
+            item["repost"] = self.reposts.info(item["id"])
 
     @classmethod
     def from_vectors(cls, vectors: np.ndarray, items: list[dict[str, Any]]) -> "Catalog":
@@ -49,7 +55,15 @@ class Catalog:
     def save(self, index_dir: Path) -> None:
         index_dir.mkdir(parents=True, exist_ok=True)
         faiss.write_index(self.index, str(index_dir / INDEX_FILE))
-        (index_dir / METADATA_FILE).write_text(json.dumps(self.items, indent=1))
+        stored = [{k: v for k, v in item.items() if k != "repost"} for item in self.items]  # derived at load
+        (index_dir / METADATA_FILE).write_text(json.dumps(stored, indent=1))
+
+    @property
+    def matrix(self) -> np.ndarray:
+        """All item vectors as one (n, dim) array, cached (for whole-catalog scoring)."""
+        if getattr(self, "_matrix", None) is None:
+            self._matrix = self.index.reconstruct_n(0, self.index.ntotal)
+        return self._matrix
 
     @property
     def categories(self) -> list[str]:
@@ -71,8 +85,10 @@ class Catalog:
         exclude_ids: set[str] | None = None,
         categories: Collection[str] | None = None,
         kids: bool | None = None,
+        collapse_reposts: bool = True,
     ) -> list[Hit]:
         """Top-k items by cosine similarity, optionally restricted by category (one or a set) and kids flag.
+        Near-duplicate reposts collapse into one hit for their group's credited original.
 
         With filters we score the whole catalog: at ~5k vectors an exact scan is ~1 ms,
         so there's no need for a pre-filtered index.
@@ -81,11 +97,12 @@ class Catalog:
         allowed = set(categories) if categories is not None else None
         if category is not None:
             allowed = {category} if allowed is None else allowed & {category}
-        filtered = allowed is not None or bool(exclude_ids) or kids is not None
+        filtered = allowed is not None or bool(exclude_ids) or kids is not None or bool(self.reposts.groups)
         fetch = self.index.ntotal if filtered else min(k, self.index.ntotal)
         scores, rows = self.index.search(query.reshape(1, -1).astype(np.float32), fetch)
 
         hits: list[Hit] = []
+        seen_groups: set[int] = set()
         for score, row in zip(scores[0], rows[0]):
             if row < 0:
                 continue
@@ -96,6 +113,13 @@ class Catalog:
                 continue
             if item["id"] in exclude_ids:
                 continue
+            if collapse_reposts and (group := self.reposts.group_of.get(item["id"])) is not None:
+                if group in seen_groups:
+                    continue
+                seen_groups.add(group)
+                rep = self.get(self.reposts.representative(item["id"]))
+                if rep is not None and rep["id"] not in exclude_ids:
+                    item = rep
             hits.append(Hit(item=item, score=float(score)))
             if len(hits) == k:
                 break

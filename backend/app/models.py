@@ -5,6 +5,18 @@ from typing import Any
 from pydantic import BaseModel, Field
 
 
+class RepostInfo(BaseModel):
+    """Credit for a group of near-duplicate images (feature 6)."""
+
+    status: str  # "original" (credited) or "unclear"
+    original_id: str | None
+    first_seen: str | None  # ISO timestamp of the credited original
+    date_source: str | None  # "EXIF DateTimeOriginal" or "ingestion time"
+    reason: str
+    hidden: int  # how many other copies were collapsed into this card
+    member_ids: list[str]
+
+
 class Item(BaseModel):
     """A catalog item. Only fields the dataset actually has, plus image size for layout."""
 
@@ -15,6 +27,7 @@ class Item(BaseModel):
     width: int
     height: int
     colors: list[str] = []  # dominant colors (hex), heaviest first, extracted from the image at index time
+    repost: RepostInfo | None = None  # set when near-duplicate copies of this image exist
 
     @classmethod
     def from_meta(cls, meta: dict[str, Any]) -> "Item":
@@ -26,6 +39,7 @@ class Item(BaseModel):
             width=meta["width"],
             height=meta["height"],
             colors=[c["hex"] for c in meta.get("colors", [])[:3]],
+            repost=meta.get("repost"),
         )
 
 
@@ -47,6 +61,15 @@ class SearchResults(BaseModel):
     # True when even the best matches are weak, e.g. a non-clothing query against a clothing-only catalog.
     # Results are still returned (closest items) so the UI can offer them behind an explanation.
     low_relevance: bool = False
+    # For photo searches: set when the uploaded photo is a repost of a catalog image (credit goes to the catalog).
+    repost_of: "UploadRepost | None" = None
+
+
+class UploadRepost(BaseModel):
+    original: "Item"
+    reason: str
+    first_seen: str | None
+    date_source: str | None
 
 
 class ColorMatchItem(Item):
@@ -57,6 +80,7 @@ class ColorMatchItem(Item):
     delta_e: float  # CIEDE2000 to the picked color (lower = closer), incl. small-coverage penalty
     matched_color: str  # which of the item's dominant colors matched
     text_score: float | None = None  # 0..1, when a text or style was given
+    matched_phrase: str | None = None  # for aesthetics: which signature garment this item matched
 
 
 class ColorResults(BaseModel):

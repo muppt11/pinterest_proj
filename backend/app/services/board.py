@@ -18,25 +18,8 @@ MIN_SILHOUETTE = 0.1
 MIN_CENTROID_DISTANCE = 0.1
 RESTARTS = 10
 
-# Zero-shot vocabulary for naming each aesthetic via the CLIP text encoder.
-STYLE_WORDS = [
-    "minimalist",
-    "streetwear",
-    "bohemian",
-    "preppy",
-    "athleisure",
-    "vintage",
-    "business formal",
-    "y2k",
-    "grunge",
-    "romantic",
-    "western",
-    "coastal",
-    "cozy knitwear",
-    "monochrome black",
-    "colorful maximalist",
-    "classic denim",
-]
+# The aesthetic vocabulary lives with its garment phrases (services/aesthetics.py).
+from app.services.aesthetics import STYLE_WORDS  # noqa: E402,F401
 
 
 @dataclass
@@ -130,10 +113,3 @@ def choose_clusters(
     labels = remap[labels]
     centroids = _normalize(np.stack([x[labels == j].mean(0) for j in range(best_k)])).astype(np.float32)
     return Clustering(best_k, labels, centroids, candidates[best_k], candidates)
-
-
-def style_tags(centroid: np.ndarray, word_vectors: np.ndarray, top: int = 3) -> list[tuple[str, float]]:
-    """The style words whose text embeddings are closest to an aesthetic's centroid."""
-    scores = word_vectors @ centroid
-    best = np.argsort(-scores)[:top]
-    return [(STYLE_WORDS[i], float(scores[i])) for i in best]

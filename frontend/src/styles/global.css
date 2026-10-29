@@ -163,3 +163,47 @@ textarea {
   max-width: 760px;
   margin: 0 auto;
 }
+
+.mb-badge {
+  display: inline-block;
+  max-width: 100%;
+  padding: 4px 10px;
+  overflow: hidden;
+  border-radius: var(--mb-radius-pill);
+  background: rgb(255 255 255 / 0.92);
+  color: #111;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mb-closeup-repost {
+  margin: 0;
+  padding: 12px 16px;
+  border-radius: var(--mb-radius-card);
+  background: var(--mb-surface-accent);
+  font-size: 0.9rem;
+}
+
+.mb-repost-banner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  max-width: 720px;
+  margin: 0 auto 20px;
+  padding: 12px;
+  border-radius: var(--mb-radius-card);
+  background: var(--mb-surface-accent);
+}
+
+.mb-repost-banner img {
+  width: 64px;
+  height: 80px;
+  object-fit: cover;
+  border-radius: 10px;
+}
+
+.mb-repost-banner p {
+  margin: 0;
+}

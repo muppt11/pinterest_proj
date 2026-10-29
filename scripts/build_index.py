@@ -8,6 +8,7 @@ Usage (from backend/): uv run python ../scripts/build_index.py [--limit N]
 """
 
 import argparse
+from datetime import datetime, timezone
 import csv
 import sys
 import time
@@ -21,6 +22,7 @@ sys.path.insert(0, str(REPO / "backend"))
 
 from app.config import get_settings  # noqa: E402
 from app.services.color import dominant_colors  # noqa: E402
+from app.services.reposts import exif_datetime_original, phash_hex  # noqa: E402
 from app.services.embedder import ProcessEmbedder  # noqa: E402
 
 # Dataset labels that mean "not a usable clothing photo", per the dataset's own annotation scheme.
@@ -50,6 +52,7 @@ def main() -> None:
     embedder = ProcessEmbedder(settings.model_dir)  # torch in a worker; this process uses faiss
     print(f"Embedding {len(rows)} images (dim={embedder.dim})")
 
+    ingested_at = datetime.now(timezone.utc).replace(microsecond=0).isoformat()
     items: list[dict] = []
     vectors: list[np.ndarray] = []
     start = time.time()
@@ -58,6 +61,7 @@ def main() -> None:
         images = []
         for row in batch_rows:
             with Image.open(dataset_dir / "images" / f"{row['image']}.jpg") as img:
+                exif_date = exif_datetime_original(img)  # read before converting, which drops EXIF
                 rgb = img.convert("RGB")
                 images.append(rgb)
                 items.append(
@@ -70,6 +74,9 @@ def main() -> None:
                         "width": img.width,
                         "height": img.height,
                         "colors": dominant_colors(rgb),
+                        "phash": phash_hex(rgb),
+                        "exif_datetime_original": exif_date,
+                        "ingested_at": ingested_at,
                     }
                 )
         vectors.append(embedder.embed_images(images))

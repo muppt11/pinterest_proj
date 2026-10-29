@@ -4,6 +4,7 @@ from dataclasses import dataclass
 
 import numpy as np
 
+from app.services.aesthetics import PhraseScores, diversified_order
 from app.services.catalog import Catalog
 from app.services.color import delta_e_2000, hex_to_rgb, rgb_to_lab
 
@@ -43,6 +44,7 @@ class ColorHit:
     delta_e: float  # best (penalized) Delta E to the target
     matched_hex: str  # the item's dominant color that matched
     text_score: float | None  # 0..1 when a text/style query was given
+    phrase: str | None = None  # garment phrase matched, for aesthetic queries
 
 
 class ColorIndex:
@@ -78,16 +80,21 @@ def color_search(
     color_weight: float = 0.6,
     kids: bool | None = None,
     allowed: np.ndarray | None = None,
+    style: PhraseScores | None = None,
 ) -> list[ColorHit]:
-    """Top-k items by color (and text, if given). Raises ValueError for a malformed hex."""
+    """Top-k items by color, blended with free text (`text_vector`) or an aesthetic's garment phrases
+    (`style`, results rotate across the phrases). Raises ValueError for a malformed hex."""
     target = rgb_to_lab(np.array(hex_to_rgb(hex_color)))
     de, which = index.distances(target)
     color_score = np.clip(1 - de / DE_ZERO, 0, 1)
 
     text_score = None
     combined = color_score
-    if text_vector is not None:
-        cos = catalog.index.reconstruct_n(0, catalog.index.ntotal) @ text_vector
+    if style is not None:
+        text_score = style.normalized()
+        combined = color_weight * color_score + (1 - color_weight) * text_score
+    elif text_vector is not None:
+        cos = catalog.matrix @ text_vector
         text_score = np.clip((cos - TEXT_LOW) / (TEXT_HIGH - TEXT_LOW), 0, 1)
         combined = color_weight * color_score + (1 - color_weight) * text_score
 
@@ -97,7 +104,11 @@ def color_search(
     if kids is not None:
         mask &= np.array([item["kids"] == kids for item in catalog.items])
     combined = np.where(mask, combined, -1)
-    order = np.argsort(-combined, kind="stable")[:k]
+    if style is not None:
+        ranked = diversified_order(combined, style.phrase_of, eligible=combined >= 0)[: k * 3]
+    else:
+        ranked = [int(r) for r in np.argsort(-combined, kind="stable")[: k * 3]]
+    order = catalog.reposts.dedupe_rows(ranked, [i["id"] for i in catalog.items])[:k]
     return [
         ColorHit(
             row=int(r),
@@ -106,6 +117,7 @@ def color_search(
             delta_e=float(de[r]),
             matched_hex=index.hexes[r][which[r]],
             text_score=None if text_score is None else float(text_score[r]),
+            phrase=None if style is None else style.phrases[int(style.phrase_of[r])],
         )
         for r in order
         if combined[r] >= 0

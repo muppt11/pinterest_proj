@@ -8,7 +8,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 
 from app.deps import FocusFilter, get_catalog, get_describer, get_embedder, get_focus
 from app.models import ColorMatchItem, ColorResults, Item, ShopLinks
-from app.services.board import STYLE_WORDS
+from app.services.aesthetics import STYLE_WORDS, bank_for, phrases_for
 from app.services.catalog import Catalog
 from app.services.color_search import ColorHit, ColorIndex, color_name, color_search
 from app.services.embedder import Embedder
@@ -50,6 +50,7 @@ def _results(catalog: Catalog, hits: list[ColorHit]) -> list[ColorMatchItem]:
             delta_e=round(h.delta_e, 2),
             matched_color=h.matched_hex,
             text_score=None if h.text_score is None else round(h.text_score, 4),
+            matched_phrase=h.phrase,
         )
         for h in hits
     ]
@@ -96,9 +97,8 @@ def mood(
     """Mood picker: a color from the wheel plus an aesthetic -> items matching both."""
     if style not in STYLE_WORDS:
         raise HTTPException(status_code=422, detail=f"Unknown style. Choose from: {', '.join(STYLE_WORDS)}")
-    prompt = f"a {style} outfit"
-    text_vector = embedder.embed_texts([prompt])[0]
-    hits = color_search(catalog, color_index(catalog), hex, k, text_vector, color_weight, allowed=focus.mask)
+    scores = bank_for(embedder).score(catalog.matrix, phrases_for([style]))
+    hits = color_search(catalog, color_index(catalog), hex, k, None, color_weight, allowed=focus.mask, style=scores)
     return ColorResults(color=_hex(hex), query=style, color_weight=color_weight, results=_results(catalog, hits))
 
 

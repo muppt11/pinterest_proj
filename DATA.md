@@ -28,4 +28,6 @@ The index script adds each image's pixel `width` and `height` (read from the fil
 
 **Snapshot on 2026-10-28:** 5,756 image files and 5,403 rows in `images.csv`. 240 rows are labeled `Not sure` (228) or `Skip` (12), the dataset's own markers for unusable photos, so they're excluded. That leaves 5,163 indexed items. Kids' items make up 476 of the 5,403 rows.
 
+**EXIF:** 0 of the 5,756 image files contain any EXIF data (checked 2026-10-28), so no catalog image has a capture date. Repost credit falls back to ingestion time and says so.
+
 There are **no** prices, sizes, brands, product names, reviews, capture dates, or EXIF provenance. The app never invents them.

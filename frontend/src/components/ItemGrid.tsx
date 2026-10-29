@@ -1,5 +1,5 @@
 import { useContext } from "react";
-import { altText, imageSrc, type Item } from "../api/client";
+import { altText, imageSrc, repostLabel, type Item } from "../api/client";
 import { SavesContextOptional } from "../saves";
 import { ItemCard } from "./ItemCard";
 import { MasonryGrid } from "./MasonryGrid";
@@ -30,6 +30,7 @@ export function ItemGrid({ items, label, onOpen, columnsFor }: ItemGridProps) {
               title={item.category}
               aspectRatio={ratio}
               boardLabel={saves?.lastBoard?.name}
+              badge={item.repost ? <span className="mb-badge" title={item.repost.reason}>{repostLabel(item)}</span> : undefined}
               onOpen={() => onOpen(item)}
               onSave={saves ? (anchor) => saves.quickSave(item, anchor) : undefined}
               onSelectBoards={saves ? (anchor) => saves.openPicker(item, anchor) : undefined}

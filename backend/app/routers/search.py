@@ -5,7 +5,8 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
 
 from app.deps import FocusFilter, get_catalog, get_embedder, get_focus
-from app.models import Item, ItemPage, ScoredItem, SearchResults
+from app.models import Item, ItemPage, ScoredItem, SearchResults, UploadRepost
+from app.services.reposts import credit, phash_hex
 from app.services.catalog import Catalog, Hit
 from app.services.embedder import Embedder
 from app.uploads import read_image
@@ -43,7 +44,9 @@ def list_items(
 ) -> ItemPage:
     """Browse the catalog in a stable order (the home grid)."""
     _check_category(catalog, category)
-    pool = [i for i in catalog.items if (category is None or i["category"] == category) and i["id"] not in focus.excluded]
+    rows = [r for r, i in enumerate(catalog.items) if (category is None or i["category"] == category) and i["id"] not in focus.excluded]
+    ids = [i["id"] for i in catalog.items]
+    pool = [catalog.items[r] for r in catalog.reposts.dedupe_rows(rows, ids)]
     return ItemPage(items=[Item.from_meta(i) for i in pool[offset : offset + limit]], total=len(pool), offset=offset)
 
 
@@ -62,7 +65,9 @@ def similar_items(item_id: str, catalog: CatalogDep, focus: FocusDep, k: K = 20,
     if catalog.get(item_id) is None:
         raise HTTPException(status_code=404, detail="Item not found.")
     _check_category(catalog, category)
-    hits = catalog.search(catalog.vector(item_id), k=k, category=category, exclude_ids={item_id} | focus.excluded)
+    # Exclude the item's own duplicate group too, so "More like this" never shows a copy of itself.
+    exclude = catalog.reposts.group_members(item_id) | focus.excluded
+    hits = catalog.search(catalog.vector(item_id), k=k, category=category, exclude_ids=exclude)
     return SearchResults(results=_scored(hits))
 
 
@@ -100,4 +105,17 @@ async def search_image(
     _check_category(catalog, category)
     _, decoded = await read_image(image)
     vector = embedder.embed_images([decoded])[0]
-    return SearchResults(results=_scored(catalog.search(vector, k=k, category=category, exclude_ids=focus.excluded)))
+    results = _scored(catalog.search(vector, k=k, category=category, exclude_ids=focus.excluded))
+    repost = None
+    matches = catalog.reposts.match_upload(catalog.items, catalog.matrix, phash_hex(decoded), vector)
+    if matches:
+        members = [catalog.items[r] for r in matches] + [{"id": "upload", "is_upload": True, "ingested_at": "9999"}]
+        c = credit(members)
+        original = catalog.get(c.original_id) if c.original_id else catalog.items[matches[0]]
+        repost = UploadRepost(
+            original=Item.from_meta(original),  # type: ignore[arg-type]
+            reason="Your photo matches an image already in the catalog. " + c.reason,
+            first_seen=c.first_seen,
+            date_source=c.date_source,
+        )
+    return SearchResults(results=results, repost_of=repost)

@@ -12,6 +12,29 @@ export interface Item {
   height: number;
   /** dominant colors (hex), heaviest first */
   colors?: string[];
+  /** set when near-duplicate copies of this image exist (feature 6) */
+  repost?: RepostInfo | null;
+}
+
+export interface RepostInfo {
+  status: "original" | "unclear";
+  original_id: string | null;
+  first_seen: string | null;
+  date_source: string | null;
+  reason: string;
+  hidden: number;
+  member_ids: string[];
+}
+
+/** One-line credit for a collapsed duplicate group. */
+export function repostLabel(item: Item): string | null {
+  const r = item.repost;
+  if (!r) return null;
+  const hidden = `${r.hidden} ${r.hidden === 1 ? "copy" : "copies"} hidden`;
+  if (r.status === "unclear") return `Original unclear · ${hidden}`;
+  const date = r.first_seen ? new Date(r.first_seen).toLocaleDateString() : "unknown date";
+  const lead = r.original_id === item.id ? "Original" : "Repost of original";
+  return `${lead} · first seen ${date} (${r.date_source}) · ${hidden}`;
 }
 
 export interface ColorMatchItem extends Item {
@@ -107,6 +130,8 @@ export interface SearchResults {
   results: ScoredItem[];
   /** True when even the best matches are weak (e.g. a non-clothing query). */
   low_relevance?: boolean;
+  /** Photo search: your upload is a repost of this catalog image. */
+  repost_of?: { original: Item; reason: string; first_seen: string | null; date_source: string | null } | null;
 }
 
 export interface Aesthetic {

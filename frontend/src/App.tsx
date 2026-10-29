@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { api, profileApi, type BoardAnalysis, type BoardContext, type Item, type Me } from "./api/client";
+import { altText, api, imageSrc, profileApi, type BoardAnalysis, type BoardContext, type Item, type Me, type SearchResults } from "./api/client";
 import { AssistantPanel } from "./components/AssistantPanel";
 import { BoardsPage } from "./components/BoardsPage";
 import { CharactersPage } from "./components/CharactersPage";
@@ -22,7 +22,7 @@ type Feed =
   | { kind: "image"; fileName: string }
   | { kind: "color"; hex: string; query: string };
 
-type FeedPage = { items: Item[]; total: number; lowRelevance?: boolean };
+type FeedPage = { items: Item[]; total: number; lowRelevance?: boolean; repostOf?: SearchResults["repost_of"] };
 
 const PAGE_SIZE = 50;
 const SKELETON_RATIOS = [1.3, 1.5, 1.7, 1.25, 1.33, 1.4, 1.0, 1.6, 1.45, 1.2, 1.75, 1.3];
@@ -46,6 +46,7 @@ export default function App() {
   // Weak text matches (e.g. "birthday cake" against a clothing catalog) are hidden behind an explanation.
   const [lowRelevance, setLowRelevance] = useState(false);
   const [showWeak, setShowWeak] = useState(false);
+  const [repostOf, setRepostOf] = useState<SearchResults["repost_of"]>(null);
   const [assistantOpen, setAssistantOpen] = useState(false);
   const [lastAnalysis, setLastAnalysis] = useState<BoardAnalysis | null>(null);
   const focus = useFocus();
@@ -79,6 +80,7 @@ export default function App() {
     setItems([]);
     setLowRelevance(false);
     setShowWeak(false);
+    setRepostOf(null);
     setLoading(true);
     setError(null);
     try {
@@ -86,6 +88,7 @@ export default function App() {
       setItems(page.items);
       setTotal(page.total);
       setLowRelevance(page.lowRelevance ?? false);
+      setRepostOf(page.repostOf ?? null);
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -203,7 +206,7 @@ export default function App() {
     rerun.current = () => searchImage(file);
     return run({ kind: "image", fileName: file.name }, async () => {
       const r = await api.searchImage(file);
-      return { items: r.results, total: r.results.length };
+      return { items: r.results, total: r.results.length, repostOf: r.repost_of };
     });
   };
 
@@ -311,6 +314,17 @@ export default function App() {
             )}
             {!error && !loading && items.length === 0 && (
               <p className="mb-notice">No matches. Try different words or another photo.</p>
+            )}
+            {repostOf && feed.kind === "image" && (
+              <div className="mb-repost-banner" role="status">
+                <img src={imageSrc(repostOf.original)} alt={altText(repostOf.original)} />
+                <p>
+                  <strong>This looks like a repost.</strong> {repostOf.reason}{" "}
+                  <button type="button" className="mb-link-button" onClick={() => openFromFeed(repostOf.original)}>
+                    See the original
+                  </button>
+                </p>
+              </div>
             )}
             {lowRelevance && !showWeak && feed.kind === "text" ? (
               <div className="mb-notice mb-weak" role="status">

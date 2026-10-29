@@ -77,6 +77,7 @@ class ForYouItem(Item):
     score: float
     style_match: float | None  # 0..1 from your aesthetics + eras
     color_match: float | None  # 0..1 from your color families
+    matched_phrase: str | None = None  # which signature garment of your picks it matched
 
 
 class ForYou(BaseModel):
@@ -168,6 +169,7 @@ def for_you_feed(
                 score=round(h.score, 4),
                 style_match=None if h.text_score is None else round(h.text_score, 3),
                 color_match=None if h.color_score is None else round(h.color_score, 3),
+                matched_phrase=h.phrase,
             )
             for h in hits
         ],

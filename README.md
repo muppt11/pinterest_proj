@@ -54,7 +54,7 @@ _To be written._ The five differentiators:
 | 3 | Complete the look | done |
 | 4 | Assistant (LangGraph + Ollama) | done (live run waits on model download) |
 | 5 | AI labels, review queue, "Fewer AI images" toggle | planned |
-| 6 | Repost detection + original credit, "first seen" date on every item | planned |
+| 6 | Repost detection + original credit, "first seen" date on every item | done |
 | 7 | Search by color (Lab k-means, Delta E 2000) | done |
 | 7b | Mood picker: color wheel + aesthetic → curated items | done |
 | 7c | Shop similar: outbound Google Shopping / Lens links from an item's real attributes | done |
@@ -179,6 +179,26 @@ _To be written._ The five differentiators:
 **Why CIEDE2000 instead of RGB distance.** RGB distance overstates differences in blues and understates them in greens. CIEDE2000 is the industry standard for perceived difference. My implementation is checked against 12 published reference pairs from Sharma et al. (2005) to 4 decimal places.
 
 **Measured by.** Feature 10: the mean Delta E of the top 20 results versus random items.
+
+### 6. Repost detection and original credit
+
+**Problem.** Artists' work gets reposted without credit (section 2), and duplicate copies clutter results.
+
+**Approach.**
+- Every image gets a 64-bit perceptual hash (pHash). Its EXIF `DateTimeOriginal` is read before any conversion that could strip it, and its ingestion time is recorded.
+- Two images count as the same picture only if **both** signals agree: pHash within 12 bits **and** FashionCLIP cosine similarity of at least 0.95.
+- Duplicate groups collapse into one card. The card credits the copy with the single earliest timestamp, labeled with the date source ("EXIF DateTimeOriginal" or "ingestion time"). A tie, or a group with only ingestion times, says **"original unclear"** instead of picking one.
+- Uploads always count as newer than catalog images. A photo search that matches a catalog image shows "This looks like a repost" and links to the original.
+- "More like this" excludes the open item's own copies.
+
+**How the thresholds were chosen.** I measured this rather than guessing ([report](evals/reports/repost_threshold.md)), using 300 real catalog photos, each transformed six ways, against 44,850 pairs of different photos:
+- pHash ignores resizing, JPEG quality 20 and color shifts (≤ 4 bits), but it's fragile to cropping. A 5% crop per side moves a median of 12 bits, and a 10% crop moves 23, about as far as unrelated photos.
+- My first placeholder (pHash ≤ 10 alone) would have chained **322 unrelated images** into one "repost" group through union-find. That's because this dataset's photos share one flat-lay layout, so *different* garments can hash within 2–4 bits. I confirmed this by viewing the closest pairs.
+- Adding CLIP agreement fixes both problems. True copies score 0.97–0.999, look-alike different garments 0.58–0.89, and a 5% crop still scores a median of 0.97. With both signals, the 5,163-image catalog has exactly **3** duplicate groups, all genuine. One is the same photo labeled "Skirt" in one place and "Shorts" in another.
+
+**Limits.**
+- The dataset has no EXIF dates (0 of 5,756 files), so catalog-only groups honestly read "original unclear".
+- Crops over about 10% can escape detection.
 
 ### Style focus: Menswear / Womenswear / All (8b)
 
