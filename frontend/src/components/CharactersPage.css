@@ -72,7 +72,7 @@
 
 .mb-chars-phrases {
   justify-content: center;
-  margin-bottom: 8px;
+  margin: 0 0 16px;
 }
 
 .mb-chars-disclaimer {
@@ -80,5 +80,15 @@
   max-width: 640px;
   color: var(--mb-ink-muted);
   font-size: 0.8rem;
+  text-align: center;
+}
+
+.mb-chars-look {
+  margin: 28px 0 8px;
+}
+
+.mb-chars-look h2 {
+  margin: 0 0 8px;
+  font-size: 1.3rem;
   text-align: center;
 }

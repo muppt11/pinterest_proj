@@ -60,9 +60,12 @@ export interface CharacterInfo {
   phrases: string[];
 }
 
+export type CharacterItem = ScoredItem & { matched_phrase: string };
+
 export interface CharacterBoard extends CharacterInfo {
   disclaimer: string;
-  results: (ScoredItem & { matched_phrase: string })[];
+  looks: { name: string; phrases: string[]; results: CharacterItem[] }[];
+  results: CharacterItem[];
 }
 
 export interface Prefs {

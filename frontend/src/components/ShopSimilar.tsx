@@ -16,16 +16,30 @@ async function copyImage(url: string): Promise<void> {
   await navigator.clipboard.write([new ClipboardItem({ "image/png": png })]);
 }
 
-/** Outbound links to find something similar to buy. MoodBoards shows no prices or stores itself. */
+/** Google can only fetch images from a public address, not from localhost or a private network. */
+export function isPublicOrigin(hostname: string): boolean {
+  return !/^(localhost|127\.|0\.0\.0\.0|10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.|\[?::1\]?$)/.test(hostname);
+}
+
+export function lensUrlFor(absoluteImageUrl: string): string {
+  return `https://lens.google.com/uploadbyurl?url=${encodeURIComponent(absoluteImageUrl)}`;
+}
+
+/**
+ * Shop similar, image first: Google Lens searches with the photo itself, so results look as close as
+ * possible. On a public deployment Lens fetches the image directly; locally we copy the photo for pasting.
+ * A keyword search is offered as the fallback. MoodBoards shows no prices or stores itself.
+ */
 export function ShopSimilar({ itemId, imageUrl }: { itemId: string; imageUrl: string }) {
   const [links, setLinks] = useState<ShopLinks | null>(null);
   const [copyState, setCopyState] = useState<"idle" | "copied" | "failed">("idle");
+  const absolute = new URL(imageUrl, window.location.href).href;
+  const direct = isPublicOrigin(window.location.hostname);
 
   useEffect(() => {
     let cancelled = false;
     setLinks(null);
     setCopyState("idle");
-    // Instant query from color + category, then a sharper one from the vision model if it's running.
     api
       .shopLinks(itemId, false)
       .then((l) => !cancelled && setLinks(l))
@@ -39,38 +53,45 @@ export function ShopSimilar({ itemId, imageUrl }: { itemId: string; imageUrl: st
     };
   }, [itemId]);
 
-  if (!links) return null;
-
-  async function copyAndSearch() {
-    // Open the tab synchronously (inside the click) so pop-up blockers allow it.
-    const tab = window.open(links!.google_images, "_blank", "noopener");
+  async function copyAndOpenLens() {
+    window.open("https://lens.google.com/", "_blank", "noopener"); // open inside the click so it isn't blocked
     try {
       await copyImage(imageUrl);
       setCopyState("copied");
     } catch {
       setCopyState("failed");
     }
-    tab?.focus();
   }
 
   return (
     <div className="mb-shop">
       <FeatureTip tipId="shop">
-        <a className="mb-shop-primary" href={links.google_shopping} target="_blank" rel="noopener noreferrer">
-          Shop similar: “{links.query}”
-          <span className="visually-hidden"> (opens Google Shopping in a new tab)</span>
-        </a>
+        {direct ? (
+          <a className="mb-shop-primary" href={lensUrlFor(absolute)} target="_blank" rel="noopener noreferrer">
+            Shop this exact look with Google Lens
+            <span className="visually-hidden"> (searches with the photo, opens in a new tab)</span>
+          </a>
+        ) : (
+          <button type="button" className="mb-shop-primary" onClick={copyAndOpenLens}>
+            Shop this exact look with Google Lens
+          </button>
+        )}
       </FeatureTip>
-      <button type="button" className="mb-shop-secondary" onClick={copyAndSearch}>
-        Copy image + search Google by photo
-      </button>
       <p className="mb-shop-note" aria-live="polite">
-        {copyState === "copied"
-          ? "Image copied. Press ⌘V (Ctrl+V) in the Google search box for visually identical results."
-          : copyState === "failed"
-            ? "Your browser blocked copying images. Right-click the photo, choose Copy Image, then paste it into Google."
-            : `Query ${links.query_source === "vision model" ? "written from the photo by the local vision model" : "built from the item's color and type"}. Results on Google aren't checked by MoodBoards.`}
+        {direct
+          ? "Searches Google with this photo itself, not keywords, for the closest visual matches."
+          : copyState === "copied"
+            ? "Photo copied. In the Google Lens tab, press ⌘V (Ctrl+V) to search with it."
+            : copyState === "failed"
+              ? "Your browser blocked copying. Right-click the photo, choose Copy Image, then paste it into Google Lens."
+              : "Running locally, so Google can't fetch the photo directly: this copies it for you to paste into Lens."}
       </p>
+      {links && (
+        <a className="mb-shop-secondary" href={links.google_shopping} target="_blank" rel="noopener noreferrer">
+          Or search by words: “{links.query}”
+        </a>
+      )}
+      <p className="mb-shop-note">Results on Google aren't checked by MoodBoards.</p>
     </div>
   );
 }

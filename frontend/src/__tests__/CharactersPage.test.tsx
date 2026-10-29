@@ -11,7 +11,7 @@ beforeEach(() => {
     vi.fn(async (url: string) =>
       new Response(
         JSON.stringify(
-          url === "/api/characters" ? [{ ...info, covers: [result] }] : { ...info, disclaimer: "Not affiliated with or endorsed by the studio.", results: [result] },
+          url === "/api/characters" ? [{ ...info, covers: [result] }] : { ...info, disclaimer: "Not affiliated with or endorsed by the studio.", results: [result], looks: [{ name: "Nevermore uniform", phrases: ["black pleated skirt"], results: [result] }] },
         ),
       ),
     ),
@@ -32,6 +32,7 @@ describe("CharactersPage", () => {
   it("shows a character board with its style phrases, disclaimer, and items (no film images)", async () => {
     render(<CharactersPage characterId="wednesday-addams" onNavigate={() => {}} onOpen={() => {}} />);
     expect(await screen.findByRole("heading", { name: "Wednesday Addams" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Nevermore uniform" })).toBeInTheDocument();
     expect(screen.getByText("black pleated skirt")).toBeInTheDocument();
     expect(screen.getByText(/Not affiliated/)).toBeInTheDocument();
     expect(screen.getAllByRole("img").map((i) => i.getAttribute("src"))).toEqual(["/api/images/d.jpg"]);

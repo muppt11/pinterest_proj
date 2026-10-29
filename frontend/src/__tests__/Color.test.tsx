@@ -1,7 +1,7 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import App from "../App";
 import { hslToHex, MoodPage, wheelPoint } from "../components/MoodPage";
-import { ShopSimilar } from "../components/ShopSimilar";
+import { isPublicOrigin, lensUrlFor, ShopSimilar } from "../components/ShopSimilar";
 
 const item = (id: string, category: string) => ({ id, category, image_url: `/images/${id}.jpg`, kids: false, width: 4, height: 5, colors: ["#9caf88"] });
 const match = (id: string, category: string) => ({ ...item(id, category), score: 0.8, color_score: 0.8, delta_e: 7.8, matched_color: "#a1b18c", text_score: null });
@@ -76,7 +76,7 @@ describe("MoodPage", () => {
 });
 
 describe("ShopSimilar", () => {
-  it("links out to Google Shopping in a new tab with a truthful query", async () => {
+  it("searches by the photo first (Lens), with a keyword search as the fallback", async () => {
     routes({
       "/api/items/a/shop-links?detailed=false": {
         query: "sage green shirt",
@@ -86,22 +86,22 @@ describe("ShopSimilar", () => {
         google_lens: "https://lens.google.com/",
         google_images: "https://www.google.com/imghp",
       },
-      "/api/items/a/shop-links?detailed=true": {
-        query: "sage green linen button-up shirt",
-        query_source: "vision model",
-        color_name: "sage green",
-        google_shopping: "https://www.google.com/search?tbm=shop&q=sage+green+linen+button-up+shirt",
-        google_lens: "https://lens.google.com/",
-        google_images: "https://www.google.com/imghp",
-      },
     });
     render(<ShopSimilar itemId="a" imageUrl="/api/images/a.jpg" />);
-    // Upgrades from the instant color+category query to the vision model's specific one.
-    const link = await screen.findByRole("link", { name: /Shop similar: “sage green linen button-up shirt”/ });
-    expect(link).toHaveAttribute("href", "https://www.google.com/search?tbm=shop&q=sage+green+linen+button-up+shirt");
-    expect(screen.getByRole("button", { name: "Copy image + search Google by photo" })).toBeInTheDocument();
-    expect(link).toHaveAttribute("target", "_blank");
-    expect(link).toHaveAttribute("rel", "noopener noreferrer");
-    expect(screen.getByText(/written from the photo by the local vision model/)).toBeInTheDocument();
+    // jsdom runs on localhost, so the photo is copied for pasting rather than linked.
+    expect(screen.getByRole("button", { name: "Shop this exact look with Google Lens" })).toBeInTheDocument();
+    expect(screen.getByText(/copies it for you to paste into Lens/)).toBeInTheDocument();
+    const words = await screen.findByRole("link", { name: /Or search by words: “sage green shirt”/ });
+    expect(words).toHaveAttribute("target", "_blank");
+    expect(words).toHaveAttribute("rel", "noopener noreferrer");
+  });
+
+  it("links straight to Lens with the image URL on a public deployment", () => {
+    expect(isPublicOrigin("localhost")).toBe(false);
+    expect(isPublicOrigin("192.168.1.20")).toBe(false);
+    expect(isPublicOrigin("moodboards.hf.space")).toBe(true);
+    expect(lensUrlFor("https://moodboards.hf.space/api/images/a.jpg")).toBe(
+      "https://lens.google.com/uploadbyurl?url=https%3A%2F%2Fmoodboards.hf.space%2Fapi%2Fimages%2Fa.jpg",
+    );
   });
 });

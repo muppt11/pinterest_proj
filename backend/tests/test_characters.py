@@ -34,7 +34,8 @@ class PhraseEmbedder(FakeEmbedder):
 def test_profiles_are_well_formed() -> None:
     assert len(CHARACTERS) >= 8 and len(BY_ID) == len(CHARACTERS)
     for c in CHARACTERS:
-        assert 3 <= len(c.phrases) <= 6 and c.summary and "(" in c.source
+        assert c.looks and all(look.name and look.phrases for look in c.looks)
+        assert 1 <= len(c.phrases) <= 12 and c.summary and "(" in c.source
         # Profiles describe style only: no prices, brands, or URLs.
         text = " ".join(c.phrases + (c.summary,)).lower()
         assert "$" not in text and "http" not in text
@@ -45,7 +46,7 @@ def test_board_excludes_kids_and_reports_matched_phrase(catalog: Catalog) -> Non
     matches = boards.board(catalog, BY_ID["cher-horowitz"], k=3)
     ids = [m.hit.item["id"] for m in matches]
     assert "shoes-boot" not in ids  # kids item excluded by default
-    assert ids[0] in ("tshirt-red", "tshirt-pink")
+    assert ids and ids[0] in ("tshirt-red", "tshirt-pink", "pants-jeans")
     assert matches[0].matched_phrase in BY_ID["cher-horowitz"].phrases
     # Phrase vectors are cached after the first call.
     assert boards.phrase_vectors(BY_ID["cher-horowitz"]) is boards.phrase_vectors(BY_ID["cher-horowitz"])
@@ -67,4 +68,6 @@ def test_endpoints(client: TestClient) -> None:
     board = client.get("/characters/wednesday-addams", params={"k": 2}).json()
     assert board["name"] == "Wednesday Addams" and "not affiliated" in board["disclaimer"].lower()
     assert len(board["results"]) == 2 and board["results"][0]["matched_phrase"]
+    assert [lo["name"] for lo in board["looks"]] == ["Nevermore uniform", "The Rave'N gown", "Everyday black"]
+    assert all(r["matched_phrase"] in lo["phrases"] for lo in board["looks"] for r in lo["results"])
     assert client.get("/characters/nobody").status_code == 404

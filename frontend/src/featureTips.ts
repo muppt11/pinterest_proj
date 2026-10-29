@@ -37,8 +37,8 @@ export const FEATURE_TIPS: FeatureTipContent[] = [
   {
     id: "shop",
     title: "Shop similar",
-    how: "On any item, tap Shop similar to search Google Shopping for that color and type of piece.",
-    why: "The catalog isn't a store, so this hands you off to real shopping results without MoodBoards inventing prices.",
+    how: "On any item, tap “Shop this exact look” to search Google Lens with the photo itself, or search by words.",
+    why: "Searching with the image finds the closest visual matches. The catalog isn't a store, so this hands you off without MoodBoards inventing prices.",
   },
   {
     id: "more-like-this",

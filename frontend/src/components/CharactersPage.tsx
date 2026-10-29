@@ -77,13 +77,22 @@ export function CharactersPage({ characterId, onNavigate, onOpen }: Props) {
       <p className="mb-chars-meta">
         {board.source} · {board.summary}
       </p>
-      <ul className="mb-tags mb-chars-phrases" aria-label="Signature style">
-        {board.phrases.map((p) => (
-          <li key={p}>{p}</li>
-        ))}
-      </ul>
       <p className="mb-chars-disclaimer">{board.disclaimer}</p>
-      <ItemGrid items={board.results} label={`${board.name} style`} onOpen={onOpen} />
+      {board.looks.map((look) => (
+        <section key={look.name} className="mb-chars-look" aria-labelledby={`look-${look.name}`}>
+          <h2 id={`look-${look.name}`}>{look.name}</h2>
+          <ul className="mb-tags mb-chars-phrases" aria-label={`Pieces in ${look.name}`}>
+            {look.phrases.map((p) => (
+              <li key={p}>{p}</li>
+            ))}
+          </ul>
+          {look.results.length === 0 ? (
+            <p className="mb-notice">No close matches in the catalog for this look.</p>
+          ) : (
+            <ItemGrid items={look.results} label={`${board.name}: ${look.name}`} onOpen={onOpen} />
+          )}
+        </section>
+      ))}
     </div>
   );
 }

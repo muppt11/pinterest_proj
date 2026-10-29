@@ -36,9 +36,16 @@ class CharacterItem(ScoredItem):
     matched_phrase: str  # which part of the style profile this item matched best
 
 
+class LookOut(BaseModel):
+    name: str
+    phrases: list[str]
+    results: list[CharacterItem]
+
+
 class CharacterBoard(CharacterOut):
     disclaimer: str
-    results: list[CharacterItem]
+    looks: list[LookOut]
+    results: list[CharacterItem]  # all looks, interleaved
 
 
 @lru_cache(maxsize=4)
@@ -79,12 +86,15 @@ def character_board(
     character = BY_ID.get(character_id)
     if character is None:
         raise HTTPException(status_code=404, detail="Unknown character.")
-    matches = _boards(embedder).board(catalog, character, k, exclude_ids=focus.excluded)
-    return CharacterBoard(
-        **_out(character).model_dump(),
-        disclaimer=DISCLAIMER,
-        results=[
-            CharacterItem(**Item.from_meta(m.hit.item).model_dump(), score=round(m.hit.score, 4), matched_phrase=m.matched_phrase)
-            for m in matches
-        ],
-    )
+    def item(m) -> CharacterItem:  # type: ignore[no-untyped-def]
+        return CharacterItem(**Item.from_meta(m.hit.item).model_dump(), score=round(m.hit.score, 4), matched_phrase=m.matched_phrase)
+
+    sections = _boards(embedder).looks(catalog, character, exclude_ids=focus.excluded)
+    looks = [LookOut(name=look.name, phrases=list(look.phrases), results=[item(m) for m in matches]) for look, matches in sections]
+    flat: list[CharacterItem] = []
+    queues = [list(lo.results) for lo in looks]
+    while any(queues) and len(flat) < k:
+        for q in queues:
+            if q and len(flat) < k:
+                flat.append(q.pop(0))
+    return CharacterBoard(**_out(character).model_dump(), disclaimer=DISCLAIMER, looks=looks, results=flat)
