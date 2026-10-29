@@ -1,0 +1,43 @@
+# 15 assistant test prompts. Each checks which tools must be called and what the answer may contain.
+# expect_tools: at least one of these must be called ([] = no tool should be called).
+# context_item: optional catalog category; the eval picks a real item of that category as "open".
+- prompt: "Find me a black leather jacket."
+  expect_tools: [search_similar]
+- prompt: "What shoes would finish this look?"
+  context_item: Dress
+  expect_tools: [complete_look, search_similar]
+- prompt: "Compare these two jackets."
+  context_items: [Outwear, Outwear]
+  expect_tools: [compare_items]
+- prompt: "Show me something cozy for a rainy autumn day."
+  expect_tools: [search_similar]
+- prompt: "I need a summer dress for a beach wedding."
+  expect_tools: [search_similar]
+- prompt: "What goes with these jeans?"
+  context_item: Pants
+  expect_tools: [complete_look, search_similar]
+- prompt: "Find a pastel cardigan."
+  expect_tools: [search_similar]
+- prompt: "Suggest a preppy outfit with a blazer."
+  expect_tools: [search_similar, complete_look]
+- prompt: "Which of these two shirts is more formal?"
+  context_items: [Shirt, Shirt]
+  expect_tools: [compare_items]
+- prompt: "Find kids' sneakers."
+  expect_tools: [search_similar]
+- prompt: "Recommend a hat to go with this."
+  context_item: T-Shirt
+  expect_tools: [complete_look, search_similar]
+- prompt: "What's the capital of France?"
+  expect_tools: []
+  off_topic: true
+- prompt: "Write me a poem about the ocean."
+  expect_tools: []
+  off_topic: true
+- prompt: "Find a birthday cake."
+  expect_tools: [search_similar]
+  expect_no_items: true
+- prompt: "How much does this cost and where can I buy it?"
+  context_item: Dress
+  expect_tools: []
+  must_not_contain: ["$", "USD", "price is"]

@@ -90,6 +90,7 @@ def color_search(
     kids: bool | None = None,
     allowed: np.ndarray | None = None,
     style: PhraseScores | None = None,
+    focus_boost: np.ndarray | None = None,
 ) -> list[ColorHit]:
     """Top-k items by color, blended with free text (`text_vector`) or an aesthetic's garment phrases
     (`style`, results rotate across the phrases). Raises ValueError for a malformed hex."""
@@ -107,6 +108,8 @@ def color_search(
         text_score = np.clip((cos - TEXT_LOW) / (TEXT_HIGH - TEXT_LOW), 0, 1)
         combined = color_weight * color_score + (1 - color_weight) * text_score
 
+    if focus_boost is not None:
+        combined = combined + 0.15 * focus_boost  # lean toward the chosen style focus
     mask = index.has_color.copy()
     if allowed is not None:
         mask &= allowed

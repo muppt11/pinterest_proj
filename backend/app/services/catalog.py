@@ -86,6 +86,7 @@ class Catalog:
         categories: Collection[str] | None = None,
         kids: bool | None = None,
         collapse_reposts: bool = True,
+        bias: np.ndarray | None = None,
     ) -> list[Hit]:
         """Top-k items by cosine similarity, optionally restricted by category (one or a set) and kids flag.
         Near-duplicate reposts collapse into one hit for their group's credited original.
@@ -99,7 +100,13 @@ class Catalog:
             allowed = {category} if allowed is None else allowed & {category}
         filtered = allowed is not None or bool(exclude_ids) or kids is not None or bool(self.reposts.groups)
         fetch = self.index.ntotal if filtered else min(k, self.index.ntotal)
-        scores, rows = self.index.search(query.reshape(1, -1).astype(np.float32), fetch)
+        if bias is not None:
+            # Whole-catalog scoring with a per-item bias (e.g. a style-focus boost); ~1 ms at this size.
+            all_scores = self.matrix @ query.astype(np.float32) + bias
+            order = np.argsort(-all_scores, kind="stable")
+            scores, rows = all_scores[order][None, :], order[None, :]
+        else:
+            scores, rows = self.index.search(query.reshape(1, -1).astype(np.float32), fetch)
 
         hits: list[Hit] = []
         seen_groups: set[int] = set()

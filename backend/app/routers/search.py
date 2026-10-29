@@ -92,7 +92,7 @@ def similar_items(item_id: str, catalog: CatalogDep, focus: FocusDep, k: K = 20,
     _check_category(catalog, category)
     # Exclude the item's own duplicate group too, so "More like this" never shows a copy of itself.
     exclude = catalog.reposts.group_members(item_id) | focus.excluded
-    hits = catalog.search(catalog.vector(item_id), k=k, category=category, exclude_ids=exclude)
+    hits = catalog.search(catalog.vector(item_id), k=k, category=category, exclude_ids=exclude, bias=focus.bias)
     return SearchResults(results=_scored(hits))
 
 
@@ -117,7 +117,7 @@ def search_text(
     # Query understanding: garment words narrow the categories, color words re-rank by perceived color.
     parsed = parse_query(query)
     categories = parsed.categories if category is None else None
-    pool = catalog.search(vector, k=max(k * 4, 200), category=category, categories=categories, exclude_ids=focus.excluded)
+    pool = catalog.search(vector, k=max(k * 4, 200), category=category, categories=categories, exclude_ids=focus.excluded, bias=focus.bias)
     if not pool:  # e.g. the garment word matched no category in this focus; fall back to text only
         pool = catalog.search(vector, k=max(k * 4, 200), category=category, exclude_ids=focus.excluded)
         categories = None
@@ -160,7 +160,7 @@ async def search_image(
     upload = process_upload(data, image.content_type or "image/jpeg")  # label first, then strip GPS
     decoded = upload.image
     vector = embedder.embed_images([decoded])[0]
-    results = _scored(catalog.search(vector, k=k, category=category, exclude_ids=focus.excluded))
+    results = _scored(catalog.search(vector, k=k, category=category, exclude_ids=focus.excluded, bias=focus.bias))
     repost = None
     matches = catalog.reposts.match_upload(catalog.items, catalog.matrix, phash_hex(decoded), vector)
     if matches:

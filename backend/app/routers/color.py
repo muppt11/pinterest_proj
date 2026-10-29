@@ -51,6 +51,10 @@ def _hex(value: str) -> str:
     return "#" + value.lstrip("#").lower()
 
 
+def _boost(focus: FocusFilter) -> np.ndarray | None:
+    return None if focus.bias is None else focus.bias / 0.03  # -1..1
+
+
 @router.get("/search/color", response_model=ColorResults)
 def search_color(
     catalog: CatalogDep,
@@ -65,7 +69,7 @@ def search_color(
     with a text query through the CLIP text encoder, e.g. hex=#9caf88 & q=linen."""
     query = q.strip() if q else None
     text_vector = embedder.embed_texts([query])[0] if query else None
-    hits = color_search(catalog, color_index(catalog), hex, k, text_vector, color_weight if query else 1.0, allowed=focus.mask)
+    hits = color_search(catalog, color_index(catalog), hex, k, text_vector, color_weight if query else 1.0, allowed=focus.mask, focus_boost=_boost(focus))
     return ColorResults(color=_hex(hex), query=query, color_weight=color_weight if query else 1.0, results=_results(catalog, hits))
 
 
@@ -89,7 +93,7 @@ def mood(
     if style not in STYLE_WORDS:
         raise HTTPException(status_code=422, detail=f"Unknown style. Choose from: {', '.join(STYLE_WORDS)}")
     scores = bank_for(embedder).score(catalog.matrix, phrases_for([style]))
-    hits = color_search(catalog, color_index(catalog), hex, k, None, color_weight, allowed=focus.mask, style=scores)
+    hits = color_search(catalog, color_index(catalog), hex, k, None, color_weight, allowed=focus.mask, style=scores, focus_boost=_boost(focus))
     return ColorResults(color=_hex(hex), query=style, color_weight=color_weight, results=_results(catalog, hits))
 
 

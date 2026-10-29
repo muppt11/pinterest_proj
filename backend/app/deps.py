@@ -65,6 +65,14 @@ class FocusFilter:
     mask: np.ndarray | None  # per-row allowed mask, or None for "all"
     lean: np.ndarray | None = None  # per-row womenswear-minus-menswear lean, or None for "all"
 
+    @property
+    def bias(self) -> np.ndarray | None:
+        """Additive cosine bias for similarity search: up to ±0.03 toward the chosen focus."""
+        if self.lean is None or self.focus == "all":
+            return None
+        sign = 1.0 if self.focus == "women" else -1.0
+        return 0.03 * np.clip(sign * self.lean / 0.08, -1, 1)
+
     def order(self, rows: list[int]) -> list[int]:
         """Rows with the most clearly on-focus items first (stable), so the feed visibly changes."""
         if self.lean is None or self.focus == "all":

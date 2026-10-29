@@ -77,3 +77,12 @@ def test_browse_order_changes_with_focus(client: TestClient) -> None:
     assert women[0] in ("tshirt-red", "tshirt-pink")  # most womenswear-leaning first
     assert men[0] == "pants-jeans"  # most menswear-leaning first
     assert women != men
+
+
+def test_search_bias_reorders_toward_focus(catalog: Catalog) -> None:
+    """Regression: filtering alone left the same unisex items on top under both focuses."""
+    query = np.array([0.6, 0, 0.8, 0], dtype=np.float32)  # closer to the jeans than the t-shirts
+    plain = [h.item["id"] for h in catalog.search(query, k=4)]
+    toward_women = np.array([1.0, 1.0, 0, -1.0], dtype=np.float32)  # boost t-shirts, demote jeans
+    biased = [h.item["id"] for h in catalog.search(query, k=4, bias=toward_women)]
+    assert plain[0] == "pants-jeans" and biased[0] in ("tshirt-red", "tshirt-pink")

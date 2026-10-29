@@ -156,14 +156,15 @@ def for_you_feed(
     prefs = Prefs(**_me(user).prefs.model_dump()) if user else Prefs([], [], [])
     if focus.focus != "all":  # the header's "Show" control overrides the quiz answer for this request
         prefs.focus = focus.focus
-    allowed = None
+    allowed = boost = None
     if prefs.focus != "all":
         index = getattr(catalog, "_focus_index", None) or FocusIndex(catalog, embedder)
         catalog._focus_index = index  # type: ignore[attr-defined]
         allowed = index.allowed(prefs.focus)  # type: ignore[arg-type]
+        boost = index.boost(prefs.focus)  # type: ignore[arg-type]
     if prefs.is_empty:
         return ForYou(personalized=False, items=[])
-    hits = for_you(catalog, color_index(catalog), embedder, prefs, k=limit, offset=offset, allowed=allowed)
+    hits = for_you(catalog, color_index(catalog), embedder, prefs, k=limit, offset=offset, allowed=allowed, focus_boost=boost)
     return ForYou(
         personalized=True,
         items=[

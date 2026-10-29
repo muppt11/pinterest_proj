@@ -54,6 +54,7 @@ def for_you(
     k: int = 50,
     offset: int = 0,
     allowed: np.ndarray | None = None,
+    focus_boost: np.ndarray | None = None,
 ) -> list[TasteHit]:
     """Catalog ranked by the user's quiz answers. Kids' items are excluded."""
     n = catalog.index.ntotal
@@ -78,6 +79,8 @@ def for_you(
         parts.append((1 - TEXT_WEIGHT if phrases else 1.0, color_score))
 
     combined = sum(w * s for w, s in parts) if parts else np.zeros(n)
+    if focus_boost is not None:
+        combined = combined + 0.2 * focus_boost  # lean toward the chosen style focus
     mask = np.array([not item["kids"] for item in catalog.items])
     if allowed is not None:
         mask &= allowed
