@@ -214,13 +214,21 @@ TRANSFORMS = {
 
 
 def eval_duplicates(catalog, embedder, settings, n: int) -> list[str]:  # type: ignore[no-untyped-def]
-    from app.services.reposts import MIN_CLIP_SIMILARITY, REPOST_THRESHOLD, hamming, hashes_to_uint64, phash_hex
+    from app.services.color import delta_e_2000, dominant_colors
+    from app.services.color_families import main_lab
+    from app.services.reposts import (
+        MAX_MAIN_COLOR_DE, MIN_CLIP_SIMILARITY, REPOST_THRESHOLD, STRICT_PHASH, STRICT_TIER_CLIP,
+        hamming, hashes_to_uint64, is_duplicate, phash_hex,
+    )
+
+    catalog_labs = main_lab(catalog.items)
 
     rows = RNG.sample(range(len(catalog.items)), n)
     lines = [
         "## 5. Repost detection (pHash + CLIP must agree)",
         "",
-        f"Known duplicates: {n} catalog photos × {len(TRANSFORMS)} edits. Rule: pHash ≤ {REPOST_THRESHOLD} bits **and** CLIP cosine ≥ {MIN_CLIP_SIMILARITY}.",
+        f"Known duplicates: {n} catalog photos × {len(TRANSFORMS)} edits. Rule: (pHash ≤ {REPOST_THRESHOLD} bits and CLIP ≥ {MIN_CLIP_SIMILARITY}) "
+        f"or (pHash ≤ {STRICT_PHASH} and CLIP ≥ {STRICT_TIER_CLIP} and main colors within Delta E {MAX_MAIN_COLOR_DE:g}).",
         "",
         "| Edit | Recall | pHash-only recall |",
         "|---|---|---|",
@@ -237,16 +245,21 @@ def eval_duplicates(catalog, embedder, settings, n: int) -> list[str]:  # type: 
         for img, r, v in zip(edited, originals, vecs):
             d = int(hamming(*hashes_to_uint64([phash_hex(img), catalog.items[r]["phash"]])))
             phash_only += d <= REPOST_THRESHOLD
-            both += d <= REPOST_THRESHOLD and float(catalog.matrix[r] @ v) >= MIN_CLIP_SIMILARITY
+            colors = dominant_colors(img)
+            de = float(delta_e_2000(np.array(max(colors, key=lambda c: c["weight"])["lab"]), catalog_labs[r])) if colors else np.inf
+            both += bool(is_duplicate(np.array([d]), np.array([float(catalog.matrix[r] @ v)]), np.array([de]))[0])
         all_hits.append(both / n)
         lines.append(f"| {name} | {pct(both / n)} | {pct(phash_only / n)} |")
 
     h = hashes_to_uint64([i["phash"] for i in catalog.items])
     pairs = [(RNG.randrange(len(h)), RNG.randrange(len(h))) for _ in range(50000)]
     pairs = [(a, b) for a, b in pairs if a != b and catalog.items[b]["id"] not in catalog.reposts.group_members(catalog.items[a]["id"])]
-    false_pos = sum(
-        int(hamming(h[a], h[b])) <= REPOST_THRESHOLD and float(catalog.matrix[a] @ catalog.matrix[b]) >= MIN_CLIP_SIMILARITY for a, b in pairs
-    )
+    A = np.array([a for a, _ in pairs])
+    B = np.array([b for _, b in pairs])
+    bits = hamming(h[A], h[B])
+    cos = (catalog.matrix[A] * catalog.matrix[B]).sum(1)
+    de = np.where(np.isnan(catalog_labs[A, 0]) | np.isnan(catalog_labs[B, 0]), np.inf, delta_e_2000(np.nan_to_num(catalog_labs[A]), np.nan_to_num(catalog_labs[B])))
+    false_pos = int(is_duplicate(bits, cos, de).sum())
     groups = [[catalog.get(i)["category"] for i in g] for g in catalog.reposts.groups]
     lines += [
         "",

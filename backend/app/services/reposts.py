@@ -28,6 +28,13 @@ from PIL import Image
 # measured distribution in evals/reports/repost_threshold.md; see README feature 6.
 REPOST_THRESHOLD = 12
 MIN_CLIP_SIMILARITY = 0.95
+# Second tier for heavy recompression (JPEG quality ~20 drops CLIP to ~0.90-0.94 while pHash stays
+# within 4 bits): near-identical structure + similar look + the same main color. The color check
+# rejects look-alike catalog pairs this tier would otherwise admit: grey vs. navy trousers, and light vs.
+# dark jeans on the same floor (main colors ~12 apart; a limit of 15 let them through, so it is 6).
+STRICT_PHASH = 4
+STRICT_TIER_CLIP = 0.88
+MAX_MAIN_COLOR_DE = 6.0
 
 DateSource = Literal["EXIF DateTimeOriginal", "ingestion time"]
 EXIF_IFD, DATETIME_ORIGINAL = 0x8769, 36867
@@ -63,14 +70,25 @@ def hamming(a: np.ndarray, b: np.ndarray) -> np.ndarray:
     return bits.reshape(x.shape)
 
 
+def is_duplicate(bits: np.ndarray, cosine: np.ndarray, main_de: np.ndarray | None) -> np.ndarray:
+    """The two-tier rule, vectorized: (pHash <= 12 and CLIP >= 0.95) or
+    (pHash <= 4 and CLIP >= 0.88 and main colors within Delta E 6)."""
+    loose = (bits <= REPOST_THRESHOLD) & (cosine >= MIN_CLIP_SIMILARITY)
+    if main_de is None:
+        return loose
+    strict = (bits <= STRICT_PHASH) & (cosine >= STRICT_TIER_CLIP) & (main_de <= MAX_MAIN_COLOR_DE)
+    return loose | strict
+
+
 def near_duplicate_groups(
     hashes: list[str],
     threshold: int = REPOST_THRESHOLD,
     vectors: np.ndarray | None = None,
     min_similarity: float = MIN_CLIP_SIMILARITY,
+    main_labs: np.ndarray | None = None,
 ) -> list[list[int]]:
     """Connected components of the near-duplicate graph (union-find). Only groups of 2+.
-    With `vectors`, an edge also needs CLIP cosine >= `min_similarity`."""
+    With `vectors` (and optionally each image's main color in Lab), edges use the two-tier rule."""
     h = hashes_to_uint64(hashes)
     parent = list(range(len(h)))
 
@@ -81,9 +99,20 @@ def near_duplicate_groups(
         return i
 
     for i in range(len(h) - 1):  # O(n^2 / 2) popcounts: ~13M for 5k images, well under a second
-        close = np.flatnonzero(hamming(h[i], h[i + 1 :]) <= threshold) + i + 1
+        bits = hamming(h[i], h[i + 1 :])
+        close = np.flatnonzero(bits <= threshold) + i + 1
         if vectors is not None and len(close):
-            close = close[vectors[close] @ vectors[i] >= min_similarity]
+            cos = vectors[close] @ vectors[i]
+            de = None
+            if main_labs is not None:
+                from app.services.color import delta_e_2000
+
+                de = delta_e_2000(main_labs[close], np.broadcast_to(main_labs[i], main_labs[close].shape))
+                de = np.where(np.isnan(de), np.inf, de)
+            if threshold == REPOST_THRESHOLD and min_similarity == MIN_CLIP_SIMILARITY:
+                close = close[is_duplicate(bits[close - i - 1], cos, de)]
+            else:
+                close = close[cos >= min_similarity]
         for j in close:
             a, b = find(i), find(int(j))
             if a != b:
@@ -143,7 +172,10 @@ class RepostIndex:
         self.credits: list[Credit] = []
         if not items or any("phash" not in i for i in items):
             return  # index built before repost metadata existed
-        for g in near_duplicate_groups([i["phash"] for i in items], threshold, vectors):
+        from app.services.color_families import main_lab
+
+        labs = main_lab(items) if vectors is not None else None
+        for g in near_duplicate_groups([i["phash"] for i in items], threshold, vectors, main_labs=labs):
             members = [items[r] for r in g]
             gi = len(self.groups)
             self.groups.append([m["id"] for m in members])
@@ -203,10 +235,23 @@ class RepostIndex:
         gi = self.group_of.get(item_id)
         return set(self.groups[gi]) if gi is not None else {item_id}
 
-    def match_upload(self, items: list[dict[str, Any]], vectors: np.ndarray, phash: str, vector: np.ndarray) -> list[int]:
-        """Catalog rows that an uploaded image is a near-duplicate of (both signals must agree)."""
+    def match_upload(
+        self, items: list[dict[str, Any]], vectors: np.ndarray, phash: str, vector: np.ndarray, main_lab: np.ndarray | None = None
+    ) -> list[int]:
+        """Catalog rows that an uploaded image is a near-duplicate of (two-tier rule)."""
         if not items or "phash" not in items[0]:
             return []
+        from app.services.color import delta_e_2000
+        from app.services.color_families import main_lab as main_labs_of
+
         h = hashes_to_uint64([i["phash"] for i in items])
-        close = np.flatnonzero(hamming(hashes_to_uint64([phash])[0], h) <= REPOST_THRESHOLD)
-        return [int(r) for r in close if float(vectors[r] @ vector) >= MIN_CLIP_SIMILARITY]
+        bits = hamming(hashes_to_uint64([phash])[0], h)
+        close = np.flatnonzero(bits <= REPOST_THRESHOLD)
+        if not len(close):
+            return []
+        cos = vectors[close] @ vector
+        de = None
+        if main_lab is not None:
+            labs = main_labs_of([items[r] for r in close])
+            de = np.where(np.isnan(labs[:, 0]), np.inf, delta_e_2000(np.nan_to_num(labs), np.broadcast_to(main_lab, labs.shape)))
+        return [int(r) for r in close[is_duplicate(bits[close], cos, de)]]

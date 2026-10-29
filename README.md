@@ -62,7 +62,7 @@ _To be written._ The five differentiators:
 | 8 | Checklist save to multiple boards, nested sub-boards, undo toast | done |
 | 8b | Style-focus filter (Menswear / Womenswear / All) chosen in a first-visit welcome popup; estimated by CLIP zero-shot, labeled "estimated", ambiguous items count as unisex | done |
 | 9 | Group trip outfit planning | done |
-| 10 | Evals | planned |
+| 10 | Evals | done |
 
 ### 1. Visual and text search
 
@@ -96,7 +96,7 @@ _To be written._ The five differentiators:
 **Approach.**
 1. Embed the 3–20 board images.
 2. Run k-means for k = 2 and 3 (k-means++ init, 10 restarts) and score each split with the mean silhouette using cosine distance.
-3. Keep the best split only if its silhouette is at least 0.1 **and** every pair of aesthetic centroids is at least 0.1 apart in cosine distance. Otherwise the board counts as one aesthetic.
+3. Keep the best split only if its silhouette is at least 0.15 **and** every pair of aesthetic centroids is at least 0.35 apart in cosine distance. Otherwise the board counts as one aesthetic. Both values come from a grid search on 240 synthetic boards (section 6).
 4. For each aesthetic, return the top catalog matches for its centroid, plus the three closest words from a fixed style vocabulary, scored with the CLIP text encoder.
 
 **Why the second check.** My first version used silhouette alone, and a unit test caught it splitting one very tight group with a silhouette of 0.67. Silhouette is scale-free: inside a tight cluster, random noise looks like structure. The centroid-gap rule asks the question that actually matters, "are these looks really different?"
@@ -107,8 +107,8 @@ _To be written._ The five differentiators:
 - HDBSCAN. Rejected: unreliable with 3–20 points.
 
 **Limits.**
-- Both thresholds are starting points. Feature 10's evals check them against real boards.
-- Style words are hints from a fixed list, not a trained classifier.
+- On synthetic boards, 66% of one-look boards are kept whole and 93% of two-look boards are split (section 6). One dataset category is only a proxy for "one look".
+- Style words come from concrete garment phrases (see the mood picker), not a trained classifier.
 
 ### 3. Complete the look
 
@@ -201,7 +201,7 @@ _To be written._ The five differentiators:
 
 **Approach.**
 - Every image gets a 64-bit perceptual hash (pHash). Its EXIF `DateTimeOriginal` is read before any conversion that could strip it, and its ingestion time is recorded.
-- Two images count as the same picture only if **both** signals agree: pHash within 12 bits **and** FashionCLIP cosine similarity of at least 0.95.
+- Two images count as the same picture if the signals agree: pHash within 12 bits **and** FashionCLIP cosine of at least 0.95; or, for heavily recompressed copies, pHash within 4 bits **and** cosine of at least 0.88 **and** main colors within Delta E 6.
 - Duplicate groups collapse into one card. The card credits the copy with the single earliest timestamp, labeled with the date source ("EXIF DateTimeOriginal" or "ingestion time"). A tie, or a group with only ingestion times, says **"original unclear"** instead of picking one.
 - Uploads always count as newer than catalog images. A photo search that matches a catalog image shows "This looks like a repost" and links to the original.
 - "More like this" excludes the open item's own copies.
@@ -213,7 +213,7 @@ _To be written._ The five differentiators:
 
 **Limits.**
 - The dataset has no EXIF dates (0 of 5,756 files), so catalog-only groups honestly read "original unclear".
-- Crops over about 10% can escape detection.
+- Crops over about 10% can escape detection (57% recall at 5% per side). Overall recall across the four edit types is 84%, with 0 false matches (section 6).
 
 ### 9. Group trip outfit planning
 
@@ -246,12 +246,12 @@ _To be written._ The five differentiators:
 
 **Approach.**
 - Each item gets an estimated *lean*: its similarity to three "womenswear" prompts minus its similarity to three "menswear" prompts, using FashionCLIP.
-- Items within ±0.03 of zero count as **unisex** and always show.
+- Items within ±0.01 of zero count as **unisex** and show under both. My first band (±0.03) shared 1,666 items between the views, so they looked alike. Now about 540 are shared, and rankings get a small boost toward the chosen focus. The top 12 now differ completely between Womenswear and Menswear in search, color, mood and For you.
 - The first-visit welcome card asks "What should we show you?" A compact "Show" dropdown in the header changes it later.
 - The filter applies to browsing, every search, More like this, Complete the look, the mood picker, character boards and board analysis.
 - It defaults to "All styles", and the control's tooltip says the split is estimated.
 
-**Checked on the real catalog.** Dresses, skirts, blouses and tops lean womenswear in 91–100% of cases. Polos, shirts and hats lean menswear in 63–72%. T-shirts, pants, shoes and hoodies straddle zero, which is honestly unisex. Womenswear shows 3,720 items, Menswear 3,109, and about 1,670 appear in both.
+**Checked on the real catalog.** Dresses, skirts, blouses and tops lean womenswear in 91–100% of cases. Polos, shirts and hats lean menswear in 63–72%. T-shirts, pants, shoes and hoodies straddle zero, which is honestly unisex. Womenswear shows 3,118 items, Menswear 2,584, and 539 appear in both.
 
 **Why not a hard classifier.** A binary label would force unisex basics into one side and would present a guess as fact. The lean with a unisex band keeps uncertain items visible to everyone.
 
@@ -358,7 +358,25 @@ Planned additions (features 4–9): LangGraph agent with Ollama, SQLite for boar
 
 ## 6. Eval results
 
-_Feature 10._
+`make eval` writes a dated report; the latest is [evals/reports/latest.md](evals/reports/latest.md). Highlights from the full run (seed 7):
+
+| Area | Result |
+|---|---|
+| Retrieval, 500 held-out photo queries | **Recall@10 98.0%**; precision@10 80.7% (same-category proxy) |
+| "Nothing matched" cutoff, 24 new queries | 12/12 off-topic flagged; 10/12 clothing shown |
+| Board analysis, 200 synthetic boards | 66% of one-look boards kept whole, 93% of two-look boards split (was 10% / 100% before tuning) |
+| Color search | Top-20 mean Delta E **10.7** vs. 32.0 for random items |
+| Mood picker | Style match of top 20: **0.91** vs. 0.15 for color-only |
+| Repost detection | **84%** recall over 4 edit types; **0** false matches in 49,990 different-photo pairs |
+| Trip weather rules | 100% on all 6 rules (outerwear when cold, no shorts, no open-toe in rain, no outerwear when hot, …) |
+| Trip permissions | Viewer can't edit, revoked/expired links fail, unpublished page 404s: all pass |
+| AI labels | 6/6 provenance cases (signed AI, signed capture, tampered, IPTC AI, unsigned capture claim, no metadata) |
+| Assistant (15 prompts) | **Skipped until the local model is pulled**; reported as skipped, never faked |
+
+**What the evals changed:**
+- **Board thresholds.** The first guesses split 90% of one-category boards. A grid search on separate boards moved them to silhouette 0.15 and centroid gap 0.35.
+- **Repost rule.** pHash plus CLIP alone caught only 12% of heavily recompressed copies, because their CLIP similarity drops to about 0.90. A second tier (pHash ≤ 4, CLIP ≥ 0.88, and main colors within Delta E 6) raised overall recall from 60% to 84% with no new false matches. I first tried a color limit of 15, but that let two different pairs of jeans through, so it's 6.
+- **Sandal cutoff.** Viewing ranked shoes showed my first guess (0.24) would catch 1 shoe instead of about 97 sandals.
 
 ## 7. Security and privacy
 

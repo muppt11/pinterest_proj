@@ -9,7 +9,7 @@ from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
 from app.deps import FocusFilter, get_catalog, get_embedder, get_focus
 from app.models import Item, ItemPage, ProvenanceLabel, ScoredItem, SearchResults, UploadRepost
 from app.services.upload_pipeline import process_upload
-from app.services.color import rgb_to_lab
+from app.services.color import dominant_colors, rgb_to_lab
 from app.services.color_families import items_in_families
 from app.services.color_search import COLOR_NAMES, color_index
 from app.services.query_parse import ParsedQuery, parse_query
@@ -162,7 +162,9 @@ async def search_image(
     vector = embedder.embed_images([decoded])[0]
     results = _scored(catalog.search(vector, k=k, category=category, exclude_ids=focus.excluded, bias=focus.bias))
     repost = None
-    matches = catalog.reposts.match_upload(catalog.items, catalog.matrix, phash_hex(decoded), vector)
+    colors = dominant_colors(decoded)
+    main = np.array(max(colors, key=lambda c: c["weight"])["lab"]) if colors else None
+    matches = catalog.reposts.match_upload(catalog.items, catalog.matrix, phash_hex(decoded), vector, main)
     if matches:
         members = [catalog.items[r] for r in matches] + [{"id": "upload", "is_upload": True, "ingested_at": "9999"}]
         c = credit(members)

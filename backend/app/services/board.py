@@ -10,12 +10,14 @@ import numpy as np
 
 MAX_K = 3
 # Below this mean silhouette, a 2- or 3-way split isn't meaningfully better than one group.
-# 0.1 is a deliberately low bar for tiny boards; feature 10's evals check it against real boards.
-MIN_SILHOUETTE = 0.1
+MIN_SILHOUETTE = 0.15
 # Silhouette is scale-free: it happily "splits" a very tight group because the noise inside it
 # looks like structure at that scale. So a split also needs its aesthetics to be genuinely apart:
-# every pair of centroids must be at least this far in cosine distance (i.e. cosine sim <= 0.9).
-MIN_CENTROID_DISTANCE = 0.1
+# every pair of centroids must be at least this far in cosine distance.
+# Both thresholds were tuned on 240 synthetic catalog boards (seed 11; the eval report uses seed 7):
+# the first guesses (0.1 / 0.1) split 90% of one-category boards; 0.15 / 0.35 keeps 69% of them whole
+# while still splitting 83% of two-look boards.
+MIN_CENTROID_DISTANCE = 0.35
 RESTARTS = 10
 
 # The aesthetic vocabulary lives with its garment phrases (services/aesthetics.py).
