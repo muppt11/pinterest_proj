@@ -9,10 +9,10 @@ from typing import Any
 import numpy as np
 from langchain_core.tools import BaseTool, tool
 
-from app.routers.search import MIN_TEXT_RELEVANCE, RELEVANCE_WINDOW
 from app.services.catalog import Catalog
 from app.services.complete_look import complete_look as complete_look_service
 from app.services.embedder import Embedder
+from app.services.relevance import MIN_TEXT_RELEVANCE, RELEVANCE_WINDOW
 
 MAX_COMPARE = 4
 
@@ -104,7 +104,7 @@ def build_tools(
         similar each pair is (cosine similarity, 1.0 = identical)."""
         ids = list(dict.fromkeys(item_ids))[:MAX_COMPARE]
         found = [catalog.get(i) for i in ids]
-        missing = [i for i, m in zip(ids, found) if m is None]
+        missing = [i for i, m in zip(ids, found, strict=False) if m is None]
         items = [m for m in found if m is not None]
         if len(items) < 2:
             ledger.tools_used.append("compare_items")

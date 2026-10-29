@@ -92,3 +92,9 @@
   font-size: 1.3rem;
   text-align: center;
 }
+
+.mb-chars-look-actions {
+  display: flex;
+  justify-content: center;
+  margin: -4px 0 8px;
+}

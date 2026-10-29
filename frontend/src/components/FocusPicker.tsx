@@ -17,26 +17,3 @@ export function FocusSelect() {
   );
 }
 
-/** Button group used in the welcome card. */
-export function FocusButtons({ onPick }: { onPick?: () => void }) {
-  const focus = useFocus();
-  return (
-    <div role="radiogroup" aria-label="Show me" className="mb-focus-buttons">
-      {(Object.keys(FOCUS_LABELS) as Focus[]).map((f) => (
-        <button
-          key={f}
-          type="button"
-          role="radio"
-          aria-checked={focus === f}
-          className={focus === f ? "is-on" : undefined}
-          onClick={() => {
-            setFocus(f);
-            onPick?.();
-          }}
-        >
-          {FOCUS_LABELS[f]}
-        </button>
-      ))}
-    </div>
-  );
-}

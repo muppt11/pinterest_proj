@@ -42,6 +42,12 @@ class SaveIn(BaseModel):
     board_ids: list[int] = Field(min_length=1, max_length=50)
 
 
+class BoardFromItems(BaseModel):
+    name: str = Field(min_length=1, max_length=100)
+    item_ids: list[str] = Field(min_length=1, max_length=60)
+    parent_id: int | None = None
+
+
 class SaveResult(BaseModel):
     item_id: str
     added_to: list[int]  # boards that newly got the item (undo removes from exactly these)
@@ -96,6 +102,22 @@ def create_board(body: BoardIn, db: Db, catalog: CatalogDep) -> BoardSummary:
         _board(db, body.parent_id)
     cur = db.execute("INSERT INTO boards (name, parent_id) VALUES (?, ?)", (name, body.parent_id))
     return _summary(db, catalog, _board(db, cur.lastrowid))  # type: ignore[arg-type]
+
+
+@router.post("/boards/from-items", response_model=BoardSummary, status_code=201)
+def board_from_items(body: BoardFromItems, db: Db, catalog: CatalogDep) -> BoardSummary:
+    """Create a board already filled with items, e.g. a board aesthetic or a character look, in one step."""
+    name = clean_name(body.name)
+    if not name:
+        raise HTTPException(status_code=422, detail="Board name can't be blank.")
+    unknown = [i for i in body.item_ids if catalog.get(i) is None]
+    if unknown:
+        raise HTTPException(status_code=404, detail=f"Unknown items: {', '.join(unknown[:5])}")
+    if body.parent_id is not None:
+        _board(db, body.parent_id)
+    board_id = db.execute("INSERT INTO boards (name, parent_id) VALUES (?, ?)", (name, body.parent_id)).lastrowid
+    db.executemany("INSERT OR IGNORE INTO saves (board_id, item_id) VALUES (?, ?)", [(board_id, i) for i in dict.fromkeys(body.item_ids)])
+    return _summary(db, catalog, _board(db, board_id))  # type: ignore[arg-type]
 
 
 @router.get("/boards/{board_id}", response_model=BoardDetail)

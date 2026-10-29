@@ -11,7 +11,7 @@ import pytest
 from fastapi.testclient import TestClient
 from PIL import Image
 
-from app.deps import get_catalog, get_embedder
+from app.deps import get_catalog, get_embedder, get_embedder_factory
 from app.main import app
 from app.services.catalog import Catalog
 
@@ -62,6 +62,7 @@ def catalog() -> Catalog:
 def client(catalog: Catalog) -> Iterator[TestClient]:
     app.dependency_overrides[get_catalog] = lambda: catalog
     app.dependency_overrides[get_embedder] = FakeEmbedder
+    app.dependency_overrides[get_embedder_factory] = lambda: FakeEmbedder
     yield TestClient(app)
     app.dependency_overrides.clear()
 

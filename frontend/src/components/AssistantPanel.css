@@ -158,3 +158,24 @@
   outline: none;
   box-shadow: 0 0 0 4px var(--mb-focus);
 }
+
+.mb-assistant-setup {
+  margin: 4px 20px 8px;
+  padding: 14px 16px;
+  border-radius: var(--mb-radius-card);
+  background: var(--mb-surface-accent);
+  font-size: 0.9rem;
+}
+
+.mb-assistant-setup p {
+  margin: 6px 0;
+}
+
+.mb-assistant-setup pre {
+  margin: 6px 0;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: var(--mb-surface);
+  font-size: 0.82rem;
+  white-space: pre-wrap;
+}

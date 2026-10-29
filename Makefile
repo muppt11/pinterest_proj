@@ -1,4 +1,4 @@
-.PHONY: help setup models index dev backend frontend test test-backend test-frontend eval deploy-hf
+.PHONY: help setup models index dev backend frontend test test-backend test-frontend lint eval deploy-hf
 
 help: ## List targets
 	@grep -E '^[a-z-]+:.*##' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  %-14s %s\n", $$1, $$2}'
@@ -17,7 +17,7 @@ index: ## Download the dataset and build embeddings, FAISS index, and metadata (
 	cd backend && uv run python ../scripts/build_index.py
 
 backend: ## Run the FastAPI dev server on :8000
-	cd backend && uv run uvicorn app.main:app --reload --port 8000
+	cd backend && uv run uvicorn app.main:app --reload --port 8000 --timeout-graceful-shutdown 3
 
 frontend: ## Run the Vite dev server on :5173
 	cd frontend && npm run dev
@@ -32,6 +32,10 @@ test-frontend: ## Vitest
 	cd frontend && npm test
 
 test: test-backend test-frontend ## Run all tests
+
+lint: ## Ruff (backend) and TypeScript checks (frontend)
+	cd backend && uvx ruff@0.14.0 check app tests ../scripts ../evals
+	cd frontend && npx tsc -p .
 
 eval: ## Run evals and write a markdown report to evals/reports/ (feature 10)
 	cd backend && uv run python ../evals/run_evals.py

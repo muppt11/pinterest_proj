@@ -79,7 +79,7 @@ HELD_OUT_OFF = ["chocolate cake recipe", "mountain bike", "living room lamp", "g
 
 
 def eval_relevance(catalog, embedder) -> list[str]:  # type: ignore[no-untyped-def]
-    from app.routers.search import MIN_TEXT_RELEVANCE, RELEVANCE_WINDOW
+    from app.services.relevance import MIN_TEXT_RELEVANCE, RELEVANCE_WINDOW
 
     def flagged(q: str) -> bool:
         hits = catalog.search(embedder.embed_texts([q])[0], k=RELEVANCE_WINDOW)
@@ -156,7 +156,7 @@ def eval_boards(catalog, n: int) -> tuple[list[str], dict]:  # type: ignore[no-u
 
 def eval_color(catalog, embedder) -> list[str]:  # type: ignore[no-untyped-def]
     from app.services.aesthetics import STYLE_WORDS, bank_for, phrases_for
-    from app.services.color import delta_e_2000, hex_to_rgb, rgb_to_lab
+    from app.services.color import hex_to_rgb, rgb_to_lab
     from app.services.color_search import COLOR_NAMES, color_index, color_search
 
     index = color_index(catalog)
@@ -217,8 +217,15 @@ def eval_duplicates(catalog, embedder, settings, n: int) -> list[str]:  # type: 
     from app.services.color import delta_e_2000, dominant_colors
     from app.services.color_families import main_lab
     from app.services.reposts import (
-        MAX_MAIN_COLOR_DE, MIN_CLIP_SIMILARITY, REPOST_THRESHOLD, STRICT_PHASH, STRICT_TIER_CLIP,
-        hamming, hashes_to_uint64, is_duplicate, phash_hex,
+        MAX_MAIN_COLOR_DE,
+        MIN_CLIP_SIMILARITY,
+        REPOST_THRESHOLD,
+        STRICT_PHASH,
+        STRICT_TIER_CLIP,
+        hamming,
+        hashes_to_uint64,
+        is_duplicate,
+        phash_hex,
     )
 
     catalog_labs = main_lab(catalog.items)
@@ -242,7 +249,7 @@ def eval_duplicates(catalog, embedder, settings, n: int) -> list[str]:  # type: 
                 originals.append(r)
         vecs = np.concatenate([embedder.embed_images(edited[i : i + 50]) for i in range(0, len(edited), 50)])
         both = phash_only = 0
-        for img, r, v in zip(edited, originals, vecs):
+        for img, r, v in zip(edited, originals, vecs, strict=False):
             d = int(hamming(*hashes_to_uint64([phash_hex(img), catalog.items[r]["phash"]])))
             phash_only += d <= REPOST_THRESHOLD
             colors = dominant_colors(img)

@@ -93,3 +93,10 @@ def test_board_validation_and_delete_cascades(client: TestClient) -> None:
     assert client.delete(f"/boards/{parent}").status_code == 204
     assert client.get(f"/boards/{child}").status_code == 404
     assert client.get("/items/tshirt-red/saved-in").json() == []
+
+
+def test_board_from_items(client: TestClient) -> None:
+    r = client.post("/boards/from-items", json={"name": "Aesthetic 1 · minimalist", "item_ids": ["tshirt-red", "pants-jeans", "tshirt-red"]})
+    assert r.status_code == 201 and r.json()["item_count"] == 2
+    assert client.post("/boards/from-items", json={"name": "x", "item_ids": ["nope"]}).status_code == 404
+    assert client.post("/boards/from-items", json={"name": "x", "item_ids": []}).status_code == 422

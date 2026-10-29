@@ -10,12 +10,11 @@ import numpy as np
 
 from app.services.aesthetics import ERA_PHRASES, STYLE_WORDS, bank_for, diversified_order, phrases_for
 from app.services.catalog import Catalog
+from app.services.color import delta_e_2000, hex_to_rgb, rgb_to_lab
 from app.services.color_families import FAMILY_SWATCHES as COLOR_FAMILIES
 from app.services.color_families import items_in_families
-from app.services.color import delta_e_2000, hex_to_rgb, rgb_to_lab
 from app.services.color_search import ColorIndex
 from app.services.embedder import Embedder
-
 
 ERAS = ERA_PHRASES  # quiz era keys -> signature garments
 

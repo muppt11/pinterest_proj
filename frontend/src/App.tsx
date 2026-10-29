@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { altText, api, imageSrc, profileApi, type BoardAnalysis, type BoardContext, type Item, type Me, type SearchResults } from "./api/client";
+import type { GarmentGroup } from "./categories";
 import { AssistantPanel } from "./components/AssistantPanel";
+import { FilterBar } from "./components/FilterBar";
 import { LabelBadge } from "./components/LabelBadge";
 import { BoardsPage } from "./components/BoardsPage";
 import { CharactersPage } from "./components/CharactersPage";
@@ -72,6 +74,10 @@ export default function App() {
   const personalized = hasPrefs && !everything;
   const personalizedRef = useRef(personalized);
   personalizedRef.current = personalized;
+  // Garment-type and aesthetic filters for Discover ("Everything") and text search.
+  const [filters, setFilters] = useState<{ group: GarmentGroup | null; style: string | null }>({ group: null, style: null });
+  const filtersRef = useRef(filters);
+  filtersRef.current = filters;
   // Re-runs whatever the feed last showed (browse or a search) when the style focus changes.
   const rerun = useRef<() => void>(() => {});
   const sentinel = useRef<HTMLDivElement>(null);
@@ -121,7 +127,7 @@ export default function App() {
       // The For you feed doesn't report a total; assume more while pages come back full.
       return { items: r.items, total: offset + r.items.length + (r.items.length === PAGE_SIZE ? 1 : 0) };
     }
-    return api.listItems(offset, PAGE_SIZE);
+    return api.listItems(offset, PAGE_SIZE, filtersRef.current);
   }, []);
 
   const browse = useCallback((goHome = true) => run({ kind: "browse" }, () => loadPage(0), goHome), [run, loadPage]);
@@ -209,7 +215,7 @@ export default function App() {
   const searchText = (query: string) => {
     rerun.current = () => searchText(query);
     return run({ kind: "text", query }, async () => {
-      const r = await api.searchText(query);
+      const r = await api.searchText(query, 50, filtersRef.current.group);
       return { items: r.results, total: r.results.length, lowRelevance: r.low_relevance, understood: r.understood };
     });
   };
@@ -239,7 +245,7 @@ export default function App() {
           ? `Color ${feed.hex}${feed.query ? ` + “${feed.query}”` : ""}`
           : personalized
             ? `For you, ${me!.display_name}`
-            : "Discover";
+            : `Discover${filters.style ? ` · ${filters.style}` : ""}`;
 
   if (path.startsWith("/t/")) {
     return (
@@ -355,6 +361,18 @@ export default function App() {
             )}
             {!error && !loading && items.length === 0 && (
               <p className="mb-notice">No matches. Try different words or another photo.</p>
+            )}
+            {((feed.kind === "browse" && !personalized) || feed.kind === "text") && (
+              <FilterBar
+                group={filters.group}
+                style={filters.style}
+                showStyle={feed.kind === "browse"}
+                onChange={(next) => {
+                  setFilters(next);
+                  filtersRef.current = next;
+                  rerun.current();
+                }}
+              />
             )}
             {understood.length > 0 && feed.kind === "text" && !lowRelevance && (
               <ul className="mb-tags mb-understood" aria-label="Search understood as">

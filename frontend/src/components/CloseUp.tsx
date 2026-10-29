@@ -1,4 +1,5 @@
 import { useContext, useEffect, useRef, useState } from "react";
+import { categoryLabel } from "../categories";
 import { SavesContextOptional } from "../saves";
 import { altText, api, imageSrc, repostLabel, type BoardContext, type Item, type ScoredItem } from "../api/client";
 import { CompleteTheLook } from "./CompleteTheLook";
@@ -49,7 +50,7 @@ export function CloseUp({ itemId, board, onBack, onOpen }: CloseUpProps) {
 
   return (
     <div className="mb-closeup-layout">
-      <section className="mb-closeup" aria-label={`${item.category} close-up`}>
+      <section className="mb-closeup" aria-label={`${categoryLabel(item.category)} close-up`}>
         <div className="mb-closeup-media">
           <img src={imageSrc(item)} alt={altText(item)} />
           <button ref={backButton} type="button" className="mb-closeup-back" onClick={onBack} aria-label="Back">
@@ -76,7 +77,7 @@ export function CloseUp({ itemId, board, onBack, onOpen }: CloseUpProps) {
               </>
             )}
           </div>
-          <h1 className="mb-closeup-title">{item.category}</h1>
+          <h1 className="mb-closeup-title">{categoryLabel(item.category)}</h1>
           {item.provenance && <LabelBadge provenance={item.provenance} />}
           {item.repost && (
             <p className="mb-closeup-repost">
@@ -88,7 +89,7 @@ export function CloseUp({ itemId, board, onBack, onOpen }: CloseUpProps) {
           <dl className="mb-closeup-facts">
             <div>
               <dt>Category</dt>
-              <dd>{item.category}</dd>
+              <dd>{categoryLabel(item.category)}</dd>
             </div>
             <div>
               <dt>Kids' clothing</dt>

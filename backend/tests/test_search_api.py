@@ -49,7 +49,7 @@ def test_off_topic_query_is_flagged_low_relevance(client: TestClient) -> None:
 
 
 def test_matching_query_is_not_flagged(client: TestClient, catalog) -> None:  # type: ignore[no-untyped-def]
-    from app.routers import search
+    from app.services import relevance as search
 
     # Mean of the 4 fixture scores for "shirt" is ~0.5, well above the cutoff.
     response = client.get("/search/text", params={"q": "red shirt"}).json()
@@ -106,3 +106,17 @@ def test_text_search_understands_garment_and_color_words(client: TestClient) -> 
     # "boot" -> Shoes only, even though other items exist
     assert {r["category"] for r in body["results"]} == {"Shoes"}
     assert body["understood"] == ["Shoes"]
+
+
+def test_garment_type_filter_on_browse_and_search(client: TestClient) -> None:
+    bottoms = client.get("/items", params={"group": "bottoms"}).json()
+    assert [i["id"] for i in bottoms["items"]] == ["pants-jeans"] and bottoms["total"] == 1
+    shoes = client.get("/search/text", params={"q": "red shirt", "group": "shoes"}).json()
+    assert {r["category"] for r in shoes["results"]} == {"Shoes"} and shoes["understood"] == ["Shoes", "red"]
+    assert client.get("/items", params={"group": "capes"}).status_code == 422
+
+
+def test_aesthetic_ranking_on_browse(client: TestClient) -> None:
+    body = client.get("/items", params={"style": "minimalist", "limit": 4}).json()
+    assert body["total"] == 4 and len(body["items"]) == 4
+    assert client.get("/items", params={"style": "goblincore"}).status_code == 422

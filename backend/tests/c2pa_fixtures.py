@@ -31,7 +31,7 @@ def _usage(sign_certs: bool) -> x509.KeyUsage:
 @lru_cache(maxsize=1)
 def signer_material() -> tuple[bytes, bytes]:
     """(PEM certificate chain, PEM private key) for a C2PA-compliant test signer."""
-    now = datetime.datetime.now(datetime.timezone.utc)
+    now = datetime.datetime.now(datetime.UTC)
     ca_key = ec.generate_private_key(ec.SECP256R1())
     ca_name = x509.Name([x509.NameAttribute(NameOID.COMMON_NAME, "MoodBoards Test CA"), x509.NameAttribute(NameOID.ORGANIZATION_NAME, "MoodBoards Tests")])
     ca = (

@@ -6,7 +6,6 @@ Usage: python scripts/download_dataset.py [--data-dir data]
 
 import argparse
 import shutil
-import socket
 import sys
 import tarfile
 import time
@@ -30,7 +29,7 @@ def download(url: str, dest: Path) -> None:
                     print(f"\r  {received / 1e6:6.1f} MB", end="", flush=True)
             print()
             return
-        except (OSError, socket.timeout) as exc:
+        except (TimeoutError, OSError) as exc:
             print(f"\n  attempt {attempt}/{ATTEMPTS} failed: {exc}")
             time.sleep(2 * attempt)
     sys.exit("Download failed. Check your connection and re-run.")

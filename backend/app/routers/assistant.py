@@ -131,6 +131,24 @@ def _ids_in(value: Any) -> set[str]:
     return found
 
 
+@router.get("/status")
+def status() -> dict:
+    """Is the local model ready? Lets the UI explain what's missing before anyone types."""
+    import urllib.request
+
+    from app.config import get_settings
+
+    s = get_settings()
+    try:
+        with urllib.request.urlopen(f"{s.ollama_host}/api/tags", timeout=2) as r:  # noqa: S310 (configured local host)
+            models = {m["name"] for m in json.loads(r.read()).get("models", [])}
+    except Exception:
+        return {"available": False, "model": s.agent_model, "reason": "ollama_not_running"}
+    if s.agent_model not in models:
+        return {"available": False, "model": s.agent_model, "reason": "model_not_pulled"}
+    return {"available": True, "model": s.agent_model, "reason": None}
+
+
 @router.post("/chat")
 async def chat(
     req: ChatRequest,

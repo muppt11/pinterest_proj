@@ -34,6 +34,7 @@ class CharacterCard(CharacterOut):
 
 class CharacterItem(ScoredItem):
     matched_phrase: str  # which part of the style profile this item matched best
+    approximate: bool = False  # nothing close in the catalog; shown as "closest available"
 
 
 class LookOut(BaseModel):
@@ -87,7 +88,9 @@ def character_board(
     if character is None:
         raise HTTPException(status_code=404, detail="Unknown character.")
     def item(m) -> CharacterItem:  # type: ignore[no-untyped-def]
-        return CharacterItem(**Item.from_meta(m.hit.item).model_dump(), score=round(m.hit.score, 4), matched_phrase=m.matched_phrase)
+        return CharacterItem(
+            **Item.from_meta(m.hit.item).model_dump(), score=round(m.hit.score, 4), matched_phrase=m.matched_phrase, approximate=m.approximate
+        )
 
     sections = _boards(embedder).looks(catalog, character, exclude_ids=focus.excluded)
     looks = [LookOut(name=look.name, phrases=list(look.phrases), results=[item(m) for m in matches]) for look, matches in sections]

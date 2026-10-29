@@ -6,7 +6,7 @@ Usage (from backend/): uv run python ../scripts/add_repost_metadata.py
 
 import json
 import sys
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 from PIL import Image
@@ -21,7 +21,7 @@ def main() -> None:
     settings = get_settings()
     path = settings.index_dir / "metadata.json"
     items = json.loads(path.read_text())
-    now = datetime.now(timezone.utc).replace(microsecond=0).isoformat()
+    now = datetime.now(UTC).replace(microsecond=0).isoformat()
     for n, item in enumerate(items, 1):
         with Image.open(settings.images_dir / item["image_file"]) as im:
             item["exif_datetime_original"] = exif_datetime_original(im)  # read before any conversion

@@ -18,7 +18,6 @@ from app.services.catalog import Catalog
 
 from .conftest import FakeEmbedder
 
-
 # --- validator -----------------------------------------------------------------------------------
 
 
@@ -201,3 +200,14 @@ def test_chat_validates_request(chat) -> None:  # type: ignore[no-untyped-def]
     client = chat([AIMessage(content="ok")])
     assert client.post("/assistant/chat", json={"message": ""}).status_code == 422
     assert client.post("/assistant/chat", json={"message": "x", "history": [{"role": "system", "content": "x"}]}).status_code == 422
+
+
+def test_status_reports_missing_ollama(monkeypatch) -> None:  # type: ignore[no-untyped-def]
+    import urllib.request
+
+    def down(*a, **k):  # type: ignore[no-untyped-def]
+        raise OSError("connection refused")
+
+    monkeypatch.setattr(urllib.request, "urlopen", down)
+    body = TestClient(app).get("/assistant/status").json()
+    assert body == {"available": False, "model": "qwen3:8b", "reason": "ollama_not_running"}

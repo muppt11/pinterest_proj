@@ -3,6 +3,7 @@ import { api, type BoardAnalysis, type BoardContext, type Item } from "../api/cl
 import { FeatureTip } from "./FeatureTip";
 import { ItemGrid } from "./ItemGrid";
 import { PageTitle } from "./PageTitle";
+import { SaveLookButton } from "./SaveLookButton";
 import "./BoardAnalyzer.css";
 
 const MIN_IMAGES = 3;
@@ -118,6 +119,10 @@ export function BoardAnalyzer({ onOpen, onAnalyzed }: BoardAnalyzerProps) {
             <article key={a.index} className="mb-aesthetic">
               <header>
                 <h2>Aesthetic {a.index + 1}</h2>
+                <SaveLookButton
+                  name={`Aesthetic ${a.index + 1} · ${a.style_tags.map((t) => t.word).slice(0, 2).join(", ")}`}
+                  items={a.results}
+                />
                 <ul className="mb-tags" aria-label="Closest style words">
                   {a.style_tags.map((t) => (
                     <li key={t.word}>{t.word}</li>

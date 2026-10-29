@@ -8,7 +8,7 @@ import secrets
 import sqlite3
 import time
 from collections import defaultdict, deque
-from datetime import date, datetime, timedelta, timezone
+from datetime import UTC, date, datetime, timedelta
 from typing import Annotated, Literal
 
 import numpy as np
@@ -291,7 +291,7 @@ def create_invite(trip_id: int, body: InviteIn, db: Db, user: UserDep) -> dict:
     require_role(db, trip_id, user, "owner")
     rate_limit("invite", user["id"], limit=10)
     token = secrets.token_urlsafe(24)  # 192 bits
-    expires = (datetime.now(timezone.utc) + timedelta(days=body.days_valid)).isoformat()
+    expires = (datetime.now(UTC) + timedelta(days=body.days_valid)).isoformat()
     cur = db.execute("INSERT INTO trip_invites (trip_id, token_sha256, role, expires_at) VALUES (?, ?, ?, ?)", (trip_id, _hash(token), body.role, expires))
     return {"id": cur.lastrowid, "token": token, "role": body.role, "expires_at": expires}
 
@@ -312,7 +312,7 @@ def revoke_invite(trip_id: int, invite_id: int, db: Db, user: UserDep) -> None:
 def join(token: str, db: Db, user: UserDep) -> dict:
     rate_limit("join", user["id"], limit=20)
     invite = db.execute("SELECT * FROM trip_invites WHERE token_sha256 = ?", (_hash(token),)).fetchone()
-    if invite is None or invite["revoked"] or datetime.fromisoformat(invite["expires_at"]) < datetime.now(timezone.utc):
+    if invite is None or invite["revoked"] or datetime.fromisoformat(invite["expires_at"]) < datetime.now(UTC):
         raise HTTPException(status_code=404, detail="This invite link is invalid, expired, or was revoked.")
     existing = role_of(db, invite["trip_id"], user["id"])
     if existing is None:
@@ -336,7 +336,7 @@ async def add_inspiration(
         raise HTTPException(status_code=422, detail=f"Add 1–{MAX_INSPIRATION_PER_UPLOAD} photos at a time.")
     processed = [process_upload((await read_image(u))[0], u.content_type or "image/jpeg").image for u in images]
     vectors = embedder.embed_images(processed)
-    for img, vec in zip(processed, vectors):
+    for img, vec in zip(processed, vectors, strict=False):
         db.execute(
             "INSERT INTO trip_inspiration (trip_id, user_id, vector, colors) VALUES (?, ?, ?, ?)",
             (trip_id, user["id"], np.asarray(vec, dtype=np.float32).tobytes(), json.dumps(dominant_colors(img))),

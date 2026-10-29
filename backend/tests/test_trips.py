@@ -3,7 +3,7 @@
 import io
 import sqlite3
 from collections.abc import Iterator
-from datetime import date, timedelta
+from datetime import UTC, date, timedelta
 from pathlib import Path
 
 import numpy as np
@@ -199,12 +199,12 @@ def test_revoked_and_expired_links_fail(make_client, monkeypatch) -> None:  # ty
     assert guest.post(f"/join/{invite['token']}").status_code == 404
 
     expiring = owner.post(f"/trips/{trip_id}/invites", json={"role": "editor", "days_valid": 1}).json()
-    from datetime import datetime, timezone
+    from datetime import datetime
 
     class Later(datetime):
         @classmethod
         def now(cls, tz=None):  # type: ignore[no-untyped-def, override]
-            return datetime.now(timezone.utc) + timedelta(days=2)
+            return datetime.now(UTC) + timedelta(days=2)
 
     monkeypatch.setattr(trips_router, "datetime", Later)
     assert guest.post(f"/join/{expiring['token']}").status_code == 404

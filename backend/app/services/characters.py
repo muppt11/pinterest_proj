@@ -11,7 +11,7 @@ from dataclasses import dataclass
 import numpy as np
 
 from app.services.catalog import Catalog, Hit
-from app.services.color import rgb_to_lab
+from app.services.color import delta_e_2000, rgb_to_lab
 from app.services.color_families import items_in_families
 from app.services.color_search import COLOR_NAMES, color_index
 from app.services.embedder import Embedder
@@ -91,12 +91,20 @@ BY_ID = {c.id: c for c in CHARACTERS}
 PER_PHRASE = 3
 
 
+# A color-specific phrase ("yellow plaid blazer") whose item's main color is further than this
+# (CIEDE2000) is flagged "closest available". Measured: true yellows 2.6-9.9 and hot pinks 10-19 from the
+# target, while cream/beige score 22.7-24.8 against yellow (CIEDE2000 compresses chroma gaps at high
+# chroma, so 25 let cream pass as yellow).
+APPROX_COLOR_DE = 20.0
+
+
 @dataclass
 class CharacterMatch:
     hit: Hit
     matched_phrase: str
     phrase_score: float
     look: str = ""
+    approximate: bool = False  # the catalog has nothing close; shown as "closest available"
 
 
 class CharacterBoards:
@@ -111,11 +119,16 @@ class CharacterBoards:
             self._phrases[character.id] = self._embedder.embed_texts(list(character.phrases))
         return self._phrases[character.id]
 
-    def _match_phrase(self, catalog: Catalog, phrase: str, vector: np.ndarray, n: int, kids: bool | None, exclude: set[str]) -> list[Hit]:
+    def _match_phrase(
+        self, catalog: Catalog, phrase: str, vector: np.ndarray, n: int, kids: bool | None, exclude: set[str]
+    ) -> list[tuple[Hit, bool]]:
+        """Best hits for one garment phrase, each with an "approximate" flag."""
         parsed = parse_query(phrase)
         pool = catalog.search(vector, k=60, categories=parsed.categories, kids=kids, exclude_ids=exclude)
+        category_fallback = False
         if not pool:
             pool = catalog.search(vector, k=60, kids=kids, exclude_ids=exclude)
+            category_fallback = parsed.categories is not None
         if pool and (parsed.color or parsed.family):
             rows = [catalog._row_by_id[h.item["id"]] for h in pool]
             text = np.array([h.score for h in pool])
@@ -126,21 +139,31 @@ class CharacterBoards:
             else:
                 color = items_in_families([catalog.items[r] for r in rows], [parsed.family]).astype(float)  # type: ignore[list-item]
             pool = [pool[i] for i in np.argsort(-(0.5 * text + 0.5 * color), kind="stable")]
-        return pool[:n]
+        target = rgb_to_lab(np.array(COLOR_NAMES[parsed.color])) if parsed.color else None
+        out = []
+        for hit in pool[: n * 4]:
+            approx = category_fallback
+            if target is not None:
+                colors = hit.item.get("colors") or []
+                main = max(colors, key=lambda c: c["weight"])["lab"] if colors else None
+                approx = approx or main is None or float(delta_e_2000(np.array(main), target)) > APPROX_COLOR_DE
+            out.append((hit, approx))
+        out.sort(key=lambda pair: pair[1])  # close matches first; stable, so ranking is kept within each group
+        return out[:n]
 
     def looks(
         self, catalog: Catalog, character: Character, per_phrase: int = PER_PHRASE, kids: bool | None = False, exclude_ids: set[str] | None = None
     ) -> list[tuple[Look, list[CharacterMatch]]]:
         """For each signature look, the best catalog matches for each of its garment phrases."""
-        vectors = dict(zip(character.phrases, self.phrase_vectors(character)))
+        vectors = dict(zip(character.phrases, self.phrase_vectors(character), strict=False))
         used = set(exclude_ids or set())
         out = []
         for look in character.looks:
             matches = []
             for phrase in look.phrases:
-                for hit in self._match_phrase(catalog, phrase, vectors[phrase], per_phrase, kids, used):
+                for hit, approx in self._match_phrase(catalog, phrase, vectors[phrase], per_phrase, kids, used):
                     used.add(hit.item["id"])
-                    matches.append(CharacterMatch(hit, phrase, hit.score, look.name))
+                    matches.append(CharacterMatch(hit, phrase, hit.score, look.name, approx))
             out.append((look, matches))
         return out
 

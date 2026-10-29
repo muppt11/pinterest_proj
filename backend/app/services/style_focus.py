@@ -49,7 +49,7 @@ class FocusIndex:
 
     def excluded_ids(self, focus: Focus) -> set[str]:
         mask = self.allowed(focus)
-        return {i for i, ok in zip(self.ids, mask) if not ok}
+        return {i for i, ok in zip(self.ids, mask, strict=False) if not ok}
 
     def boost(self, focus: Focus) -> np.ndarray | None:
         """Per-row -1..1 score: how strongly each item leans toward `focus` (None for "all")."""

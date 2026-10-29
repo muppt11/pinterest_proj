@@ -1,21 +1,24 @@
 """Catalog browsing and visual / text search."""
 
-from typing import Annotated
+from collections.abc import Callable
+from typing import Annotated, Literal
 
 import numpy as np
-
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
 
-from app.deps import FocusFilter, get_catalog, get_embedder, get_focus
+from app.deps import FocusFilter, get_catalog, get_embedder, get_embedder_factory, get_focus
 from app.models import Item, ItemPage, ProvenanceLabel, ScoredItem, SearchResults, UploadRepost
-from app.services.upload_pipeline import process_upload
+from app.services.aesthetics import STYLE_WORDS, bank_for, diversified_order, phrases_for
+from app.services.catalog import Catalog, Hit
 from app.services.color import dominant_colors, rgb_to_lab
 from app.services.color_families import items_in_families
 from app.services.color_search import COLOR_NAMES, color_index
-from app.services.query_parse import ParsedQuery, parse_query
-from app.services.reposts import credit, phash_hex
-from app.services.catalog import Catalog, Hit
+from app.services.complete_look import GROUPS
 from app.services.embedder import Embedder
+from app.services.query_parse import ParsedQuery, parse_query
+from app.services.relevance import MIN_TEXT_RELEVANCE, RELEVANCE_WINDOW
+from app.services.reposts import credit, phash_hex
+from app.services.upload_pipeline import process_upload
 from app.uploads import read_image
 
 router = APIRouter(tags=["search"])
@@ -24,12 +27,8 @@ CatalogDep = Annotated[Catalog, Depends(get_catalog)]
 EmbedderDep = Annotated[Embedder, Depends(get_embedder)]
 FocusDep = Annotated[FocusFilter, Depends(get_focus)]
 K = Annotated[int, Query(ge=1, le=100)]
+Group = Literal["tops", "bottoms", "one-piece", "outerwear", "shoes", "hats"]
 
-# Text→image relevance cutoff on the mean cosine score of the top 10 results.
-# Measured on the real index (2026-10-28): 13 clothing queries scored 0.232–0.269,
-# 13 non-clothing/gibberish queries scored 0.069–0.211. 0.22 sits in the gap; feature 10 re-checks it.
-MIN_TEXT_RELEVANCE = 0.22
-RELEVANCE_WINDOW = 10
 
 
 def _scored(hits: list[Hit]) -> list[ScoredItem]:
@@ -45,17 +44,35 @@ def _check_category(catalog: Catalog, category: str | None) -> None:
 def list_items(
     catalog: CatalogDep,
     focus: FocusDep,
+    embedder_factory: Annotated[Callable[[], Embedder], Depends(get_embedder_factory)],
     offset: Annotated[int, Query(ge=0)] = 0,
     limit: Annotated[int, Query(ge=1, le=200)] = 50,
     category: str | None = None,
+    group: Annotated[Group | None, Query(description="garment type: tops, bottoms, one-piece, outerwear, shoes, hats")] = None,
+    style: Annotated[str | None, Query(description="an aesthetic; ranks the feed by its signature garments")] = None,
 ) -> ItemPage:
-    """Browse the catalog in a stable order (the home grid)."""
+    """Browse the catalog (the home grid), optionally narrowed to a garment type and ranked by an aesthetic."""
     _check_category(catalog, category)
-    rows = [r for r, i in enumerate(catalog.items) if (category is None or i["category"] == category) and i["id"] not in focus.excluded]
+    if style is not None and style not in STYLE_WORDS:
+        raise HTTPException(status_code=422, detail=f"Unknown style. Choose from: {', '.join(STYLE_WORDS)}")
+    allowed = GROUPS[group] if group else None
+    rows = [
+        r
+        for r, i in enumerate(catalog.items)
+        if (category is None or i["category"] == category) and (allowed is None or i["category"] in allowed) and i["id"] not in focus.excluded
+    ]
     ids = [i["id"] for i in catalog.items]
-    ordered = focus.order(rows)
-    if focus.focus != "all" and category is None:
-        ordered = _interleave_by_category(ordered, catalog)
+    if style:
+        # Rank by the aesthetic's garment phrases (max-match, rotating across phrases), nudged by focus.
+        scores = bank_for(embedder_factory()).score(catalog.matrix, phrases_for([style]))
+        ranking = scores.normalized() + (0.0 if focus.bias is None else focus.bias / 0.03 * 0.15)
+        eligible = np.zeros(len(ids), dtype=bool)
+        eligible[rows] = True
+        ordered = diversified_order(ranking, scores.phrase_of, eligible=eligible, pool=max(400, offset + limit * 3))
+    else:
+        ordered = focus.order(rows)
+        if focus.focus != "all" and category is None:
+            ordered = _interleave_by_category(ordered, catalog)
     pool = [catalog.items[r] for r in catalog.reposts.dedupe_rows(ordered, ids)]
     return ItemPage(items=[Item.from_meta(i) for i in pool[offset : offset + limit]], total=len(pool), offset=offset)
 
@@ -104,6 +121,7 @@ def search_text(
     q: Annotated[str, Query(min_length=1, max_length=200)],
     k: K = 20,
     category: str | None = None,
+    group: Annotated[Group | None, Query(description="limit to a garment type")] = None,
 ) -> SearchResults:
     """Search by description, e.g. 'sage green linen shirt', via the CLIP text encoder."""
     query = q.strip()
@@ -117,6 +135,9 @@ def search_text(
     # Query understanding: garment words narrow the categories, color words re-rank by perceived color.
     parsed = parse_query(query)
     categories = parsed.categories if category is None else None
+    if group:  # an explicit garment-type filter; narrowed further by garment words when they overlap
+        chosen = set(GROUPS[group])
+        categories = (chosen & categories) or chosen if categories else chosen
     pool = catalog.search(vector, k=max(k * 4, 200), category=category, categories=categories, exclude_ids=focus.excluded, bias=focus.bias)
     if not pool:  # e.g. the garment word matched no category in this focus; fall back to text only
         pool = catalog.search(vector, k=max(k * 4, 200), category=category, exclude_ids=focus.excluded)

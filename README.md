@@ -6,7 +6,7 @@
 
 **MoodBoards turns a board of outfit photos into a taste profile, then finds, explains and plans outfits around it, alone or with friends on a trip.**
 
-![Demo GIF placeholder](docs/demo.gif)
+**▶ Demo video (Loom):** _link coming soon_. A 3-minute walkthrough of every feature, including the local assistant.
 
 ### Run it locally
 
@@ -19,20 +19,14 @@ make dev                  # API on :8000, web app on :5173
 
 `make test` runs pytest and Vitest, `make eval` writes the eval report, and `make help` lists every target.
 
-### Live demo (Hugging Face Spaces)
+### Hosting
 
-_Link goes here once deployed._ The Space builds from the `Dockerfile`:
-- It installs CPU-only PyTorch.
-- It downloads the CC0 dataset and the checksum-verified model.
-- It builds the index.
-- It serves the API and the app from one process (`app/serve.py`).
+There's no always-on hosted demo, on purpose. The app needs a Python server with about 3 GB of RAM for FashionCLIP, and the free hosts that used to fit (Hugging Face Docker Spaces) now require a paid plan for new accounts. Everything is ready for a paid host, though:
+- A `Dockerfile` with CPU-only PyTorch, which downloads the data and builds the index inside the image.
+- `app/serve.py`, which serves the API and the app from one process.
+- `make deploy-hf SPACE=<user>/<space>`, which pushes to a Hugging Face Space ($9/month PRO).
 
-The Ask assistant and AI-drafted notes need a local model, so on the hosted demo they explain that they run locally. Everything else works. To deploy your own copy:
-
-```bash
-hf auth login                             # once, with a Hugging Face write token
-make deploy-hf SPACE=<your-hf-username>/moodboards
-```
+For a live session, a tunnel from your laptop (for example Cloudflare Tunnel) also works.
 
 ## 2. User research and opportunities
 
@@ -89,15 +83,17 @@ The five differentiators:
 | 1 | Indexing + image/text search | done |
 | 2 | Board analysis (k-means, k by silhouette score) | done |
 | 3 | Complete the look | done |
-| 4 | Assistant (LangGraph + Ollama) | done (live run waits on model download) |
+| 4 | Assistant (LangGraph + Ollama) | done (needs a local model; the panel explains setup) |
 | 5 | AI labels from provenance metadata (light version: labels + explanations; no review queue or toggle) | done |
-| 6 | Repost detection + original credit, "first seen" date on every item | done |
+| 6 | Repost detection + original credit ("first seen" date and its source on collapsed duplicates) | done |
 | 7 | Search by color (Lab k-means, Delta E 2000) | done |
 | 7b | Mood picker: color wheel + aesthetic → curated items | done |
 | 7c | Shop similar: outbound Google Shopping / Lens links from an item's real attributes | done |
 | 2b | Character style boards: written style profiles of iconic film/TV looks → catalog matches | done |
 | 8 | Checklist save to multiple boards, nested sub-boards, undo toast | done |
+| 8c | Discover filters: garment-type chips (Tops, Bottoms, Dresses, Outerwear, Shoes, Hats) and an aesthetic picker that re-ranks the feed | done |
 | 8b | Style-focus filter (Menswear / Womenswear / All) chosen in a first-visit welcome popup; estimated by CLIP zero-shot, labeled "estimated", ambiguous items count as unisex | done |
+| 8d | Sign-up with a skippable style quiz (aesthetics, color families, eras, focus) → personalized For you feed | done |
 | 9 | Group trip outfit planning | done |
 | 10 | Evals | done |
 
@@ -334,6 +330,18 @@ So MoodBoards hands off to Google and never displays prices, stores, or availabi
 - SerpAPI: paid.
 - Retailer affiliate feeds: out of scope, and they bring commercial terms.
 
+### Discover filters (8c)
+
+**What it does.**
+- **Garment-type chips** (Tops, Bottoms, Dresses, Outerwear, Shoes, Hats) narrow the feed or any search.
+- An **aesthetic picker** re-ranks the feed by that aesthetic's signature garments, rotating across them so one garment type doesn't take over.
+- Category names are cleaned up for display: the dataset's "Outwear" (a typo in the source), "Longsleeve" and "Body" show as Outerwear, Long-sleeve top and Bodysuit.
+
+**Checked on real data.**
+- "Streetwear" returns caps, sneakers, bomber jackets, a hoodie and cargo pants.
+- Coastal bottoms returns 5 pants, 4 shorts and 1 skirt.
+- Business-formal shoes returns 10 shoes.
+
 ### Character style boards (2b)
 
 **What it does.** Pick an iconic film or TV character and get a board of catalog items in their signature style, built with the same pipeline as board analysis.
@@ -342,6 +350,13 @@ So MoodBoards hands off to Google and never displays prices, stores, or availabi
 - Each character is a short *written* style profile, labeled as an editorial interpretation. For example: "inspired by a 90s sitcom fashion icon: plaid mini skirts, fitted cardigans, knee-high socks."
 - The profile's phrases are embedded with the CLIP text encoder and averaged into a style vector. Catalog items are ranked against it.
 - The board shows which phrases each item matched best, so the match can be explained.
+
+**Signature looks, matched honestly.**
+- Each character is a set of named looks, for example Cher's "yellow plaid suit". Every garment phrase goes through query understanding, so "yellow plaid blazer" searches only blazers and prefers yellow ones.
+- When the catalog has nothing close, the item is tagged **"Closest available"**. That happens when the phrase names a color and the item's main color is more than Delta E 20 away, or when the garment type had to fall back.
+- I set 20 after measuring: true yellows score 2.6–9.9 and hot pinks 10–19, while cream and beige score 22.7–24.8 against yellow. My first limit of 25 let cream pass as yellow.
+- Result: Cher's yellow plaid suit honestly reads "closest available" (the catalog has no yellow blazers), while Elle's pink suit and Wednesday's all-black looks are real matches.
+- "Save as board" turns any look, or any board aesthetic, into a board in one click, with Undo.
 
 **What it deliberately doesn't do.**
 - It shows no film stills, promo images, or photos of actors. Those are copyrighted, and using actors' likenesses raises right-of-publicity issues.
@@ -474,9 +489,22 @@ Some features are built here in a reduced but honest form, because the full vers
 
 ### Current limitations
 
-- **Board-split thresholds are loose on real data.** In a first end-to-end run, 4 shoe and 4 dress photos split cleanly. But 6 random T-shirts were also split into 2 "aesthetics" (silhouette 0.19), because FashionCLIP vectors for clothing all sit fairly close together. Feature 10's evals will tune both thresholds on real boards.
-- **Category labels are coarse.** "denim jacket" returns blazers and shirts because the dataset has no denim or jacket-type labels. Retrieval is by image style only.
-- **Card titles are category names** ("T-Shirt"), because the dataset has no product names, and the app doesn't invent them.
+- **The catalog is dated and narrow.** It's the only openly licensed clothing dataset I confirmed (CC0, crowd-sourced photos from around 2020): 5,163 items, mostly dark and neutral, with only 65 true pastels. Some looks simply aren't in it, and the app says "closest available" rather than pretending. A modern, licensed product catalog is the biggest upgrade available.
+- **The assistant needs a local model.** It runs on Ollama (qwen3:8b), which isn't bundled. Without it, the panel explains how to set it up, and everything else works.
+- **Category labels are coarse.** "Denim jacket" can return blazers, because the dataset has no denim or jacket-type labels. Search makes up for some of this with query understanding and FashionCLIP.
+- **Menswear / Womenswear is an estimate** (see 8b), and unisex basics show under both.
+- **Board analysis thresholds** keep 66% of one-look boards whole and split 93% of two-look boards on synthetic tests. Real boards will vary.
+- **Repost detection** misses crops beyond about 10% (57% recall at 5% per side).
+- **Card titles are category names**, because the dataset has no product names and the app doesn't invent them.
+- **Identity is a display name plus a cookie.** Rate limits are in memory, and the activity feed polls SQLite. All three need production replacements.
+- **Shop this exact look** pastes into Google Lens locally. It's automatic only when the photos are at a public URL.
+
+### Next steps
+
+1. Record the demo video.
+2. Swap in a modern, licensed product catalog; the pipeline is catalog-agnostic.
+3. Run the assistant eval once the local model is pulled.
+4. Add creator-facing label appeals (the scoped-out part of feature 5).
 
 ## 11. Sources
 

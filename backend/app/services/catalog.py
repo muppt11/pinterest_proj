@@ -110,7 +110,7 @@ class Catalog:
 
         hits: list[Hit] = []
         seen_groups: set[int] = set()
-        for score, row in zip(scores[0], rows[0]):
+        for score, row in zip(scores[0], rows[0], strict=False):
             if row < 0:
                 continue
             item = self.items[row]

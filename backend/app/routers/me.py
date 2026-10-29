@@ -16,8 +16,8 @@ from app.config import get_settings
 from app.db import get_db
 from app.deps import FocusFilter, get_catalog, get_embedder, get_focus
 from app.models import Item
-from app.services.color_search import color_index
 from app.services.catalog import Catalog
+from app.services.color_search import color_index
 from app.services.embedder import Embedder
 from app.services.style_focus import FocusIndex
 from app.services.taste import COLOR_FAMILIES, ERAS, MAX_PICKS, STYLE_WORDS, Prefs, for_you, quiz_options

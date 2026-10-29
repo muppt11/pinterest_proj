@@ -228,3 +228,46 @@ textarea {
   margin: -8px 0 16px;
   color: var(--mb-ink-muted);
 }
+
+.mb-filterbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  justify-content: center;
+  margin: -8px 0 16px;
+}
+
+.mb-filter-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  justify-content: center;
+}
+
+.mb-filter-chips button {
+  padding: 8px 14px;
+  border: 0;
+  border-radius: var(--mb-radius-pill);
+  background: var(--mb-surface-muted);
+  color: var(--mb-ink);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.mb-filter-chips button[aria-checked="true"] {
+  background: var(--mb-selected);
+  color: var(--mb-bg);
+}
+
+.mb-filter-style select {
+  height: 38px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: var(--mb-radius-pill);
+  background: var(--mb-surface-muted);
+  color: var(--mb-ink);
+  font-weight: 600;
+  text-transform: capitalize;
+  cursor: pointer;
+}

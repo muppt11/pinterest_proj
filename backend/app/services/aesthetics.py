@@ -69,7 +69,7 @@ class PhraseBank:
     def vectors(self, phrases: list[str]) -> np.ndarray:
         missing = [p for p in phrases if p not in self._cache]
         if missing:
-            for p, v in zip(missing, self._embedder.embed_texts(missing)):
+            for p, v in zip(missing, self._embedder.embed_texts(missing), strict=False):
                 self._cache[p] = v
         return np.stack([self._cache[p] for p in phrases])
 

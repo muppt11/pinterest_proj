@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
-import { altText, imageSrc, startAssistantChat, type AssistantRequest, type ChatTurn, type Item } from "../api/client";
+import { altText, api, imageSrc, startAssistantChat, type AssistantRequest, type ChatTurn, type Item } from "../api/client";
 import { streamSse } from "../api/sse";
 import "./AssistantPanel.css";
 
@@ -44,9 +44,16 @@ export function AssistantPanel({ open, onClose, onOpenItem, contextItemIds, boar
   const [busy, setBusy] = useState(false);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const abort = useRef<AbortController | null>(null);
+  // null = still checking; otherwise whether the local model is ready.
+  const [status, setStatus] = useState<{ available: boolean; model: string; reason: string | null } | null>(null);
 
   useEffect(() => {
-    if (open) inputRef.current?.focus();
+    if (!open) return;
+    inputRef.current?.focus();
+    api
+      .assistantStatus()
+      .then(setStatus)
+      .catch(() => setStatus({ available: false, model: "", reason: "api_unreachable" }));
   }, [open]);
 
   useEffect(() => () => abort.current?.abort(), []);
@@ -114,8 +121,25 @@ export function AssistantPanel({ open, onClose, onOpenItem, contextItemIds, boar
         {board && " It can see your analyzed board."}
       </p>
 
+      {status && !status.available && (
+        <div className="mb-assistant-setup" role="status">
+          <strong>The assistant runs on a local AI model, and it isn't set up on this computer yet.</strong>
+          {status.reason === "api_unreachable" ? (
+            <p>Couldn't reach the MoodBoards API. Is the backend running?</p>
+          ) : (
+            <>
+              <p>To turn it on, install Ollama and download the model once:</p>
+              <pre>
+                {status.reason === "ollama_not_running" ? "open -a Ollama\n" : ""}ollama pull {status.model}
+              </pre>
+              <p>Everything else in MoodBoards works without it.</p>
+            </>
+          )}
+        </div>
+      )}
+
       <ol className="mb-assistant-log" aria-live="polite">
-        {messages.length === 0 && (
+        {messages.length === 0 && status?.available !== false && (
           <li className="mb-assistant-suggestions">
             {SUGGESTIONS.map((s) => (
               <button key={s} type="button" onClick={() => send(s)}>
@@ -159,6 +183,7 @@ export function AssistantPanel({ open, onClose, onOpenItem, contextItemIds, boar
         <textarea
           id="mb-assistant-text"
           ref={inputRef}
+          disabled={status?.available === false}
           rows={2}
           value={input}
           placeholder="Ask about outfits…"

@@ -1,4 +1,5 @@
 /** Typed client for the MoodBoards API. In dev, Vite proxies /api to FastAPI on :8000. */
+import { categoryLabel } from "../categories";
 import { getFocus } from "../focus";
 
 const BASE = "/api";
@@ -68,7 +69,7 @@ export interface CharacterInfo {
   phrases: string[];
 }
 
-export type CharacterItem = ScoredItem & { matched_phrase: string };
+export type CharacterItem = ScoredItem & { matched_phrase: string; approximate?: boolean };
 
 export interface CharacterBoard extends CharacterInfo {
   disclaimer: string;
@@ -239,6 +240,7 @@ export const boardsApi = {
   get: (id: number) => request<BoardDetail>(`/boards/${id}`),
   create: (name: string, parentId: number | null = null) => request<Board>("/boards", json({ name, parent_id: parentId })),
   remove: (id: number) => fetch(`${BASE}/boards/${id}`, { method: "DELETE" }),
+  fromItems: (name: string, itemIds: string[]) => request<Board>("/boards/from-items", json({ name, item_ids: itemIds })),
   save: (itemId: string, boardIds: number[]) => request<SaveResult>("/saves", json({ item_id: itemId, board_ids: boardIds })),
   unsave: (itemId: string, boardIds: number[]) =>
     request<SaveResult>("/saves/remove", json({ item_id: itemId, board_ids: boardIds })),
@@ -270,13 +272,18 @@ export async function startAssistantChat(body: AssistantRequest, signal?: AbortS
 
 export const imageSrc = (item: Item) => `${BASE}${item.image_url}`;
 
-export const altText = (item: Item) => `Photo of ${item.kids ? "kids' " : ""}${item.category.toLowerCase()}`;
+export const altText = (item: Item) => `Photo of ${item.kids ? "kids' " : ""}${categoryLabel(item.category).toLowerCase()}`;
 
 export const api = {
-  listItems: (offset = 0, limit = 50) => request<ItemPage>(`/items?offset=${offset}&limit=${limit}`),
+  listItems: (offset = 0, limit = 50, filters: { group?: string | null; style?: string | null } = {}) =>
+    request<ItemPage>(
+      `/items?offset=${offset}&limit=${limit}${filters.group ? `&group=${filters.group}` : ""}${filters.style ? `&style=${encodeURIComponent(filters.style)}` : ""}`,
+    ),
   getItem: (id: string) => request<Item>(`/items/${encodeURIComponent(id)}`),
   similar: (id: string, k = 30) => request<SearchResults>(`/items/${encodeURIComponent(id)}/similar?k=${k}`),
-  searchText: (q: string, k = 50) => request<SearchResults>(`/search/text?q=${encodeURIComponent(q)}&k=${k}`),
+  searchText: (q: string, k = 50, group?: string | null) =>
+    request<SearchResults>(`/search/text?q=${encodeURIComponent(q)}&k=${k}${group ? `&group=${group}` : ""}`),
+  assistantStatus: () => request<{ available: boolean; model: string; reason: string | null }>("/assistant/status"),
   searchImage: (file: File, k = 50) => {
     const body = new FormData();
     body.append("image", file);

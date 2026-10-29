@@ -49,4 +49,4 @@ COPY --chown=user --from=web /web/dist frontend/dist
 ENV MOODBOARDS_SECURE_COOKIES=1
 EXPOSE 7860
 WORKDIR /home/user/app/backend
-CMD ["uvicorn", "app.serve:app", "--host", "0.0.0.0", "--port", "7860", "--proxy-headers"]
+CMD ["uvicorn", "app.serve:app", "--host", "0.0.0.0", "--port", "7860", "--proxy-headers", "--timeout-graceful-shutdown", "3"]

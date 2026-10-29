@@ -145,7 +145,7 @@ def _rank_by_palette(catalog: Catalog, hits: list[Hit], palette: list[dict]) -> 
 
     scores = np.array([h.score for h in hits])
     scores = (scores - scores.min()) / max(float(scores.max() - scores.min()), 1e-6) if len(hits) else scores
-    combined = [0.5 * s + 0.5 * palette_fit(h.item) for s, h in zip(scores, hits)]
+    combined = [0.5 * s + 0.5 * palette_fit(h.item) for s, h in zip(scores, hits, strict=False)]
     return [hits[i] for i in np.argsort(-np.array(combined), kind="stable")]
 
 

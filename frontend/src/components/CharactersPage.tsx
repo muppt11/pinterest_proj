@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
-import { api, imageSrc, type CharacterBoard, type CharacterInfo, type Item } from "../api/client";
+import { api, imageSrc, type CharacterBoard, type CharacterInfo, type CharacterItem, type Item } from "../api/client";
 import { FeatureTip } from "./FeatureTip";
 import { ItemGrid } from "./ItemGrid";
 import { PageTitle } from "./PageTitle";
+import { SaveLookButton } from "./SaveLookButton";
 import "./CharactersPage.css";
 
 interface Props {
@@ -77,10 +78,15 @@ export function CharactersPage({ characterId, onNavigate, onOpen }: Props) {
       <p className="mb-chars-meta">
         {board.source} · {board.summary}
       </p>
-      <p className="mb-chars-disclaimer">{board.disclaimer}</p>
+      <p className="mb-chars-disclaimer">
+        {board.disclaimer} Items tagged “Closest available” are the nearest the catalog has (for example, it has no yellow blazers).
+      </p>
       {board.looks.map((look) => (
         <section key={look.name} className="mb-chars-look" aria-labelledby={`look-${look.name}`}>
           <h2 id={`look-${look.name}`}>{look.name}</h2>
+          <div className="mb-chars-look-actions">
+            <SaveLookButton name={`${board.name} · ${look.name}`} items={look.results} />
+          </div>
           <ul className="mb-tags mb-chars-phrases" aria-label={`Pieces in ${look.name}`}>
             {look.phrases.map((p) => (
               <li key={p}>{p}</li>
@@ -89,7 +95,18 @@ export function CharactersPage({ characterId, onNavigate, onOpen }: Props) {
           {look.results.length === 0 ? (
             <p className="mb-notice">No close matches in the catalog for this look.</p>
           ) : (
-            <ItemGrid items={look.results} label={`${board.name}: ${look.name}`} onOpen={onOpen} />
+            <ItemGrid
+              items={look.results}
+              label={`${board.name}: ${look.name}`}
+              onOpen={onOpen}
+              badgeFor={(item) =>
+                (item as CharacterItem).approximate ? (
+                  <span className="mb-badge" title="Nothing closer in this catalog">
+                    Closest available
+                  </span>
+                ) : null
+              }
+            />
           )}
         </section>
       ))}

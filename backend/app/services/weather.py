@@ -78,7 +78,7 @@ def trip_weather(lat: float, lon: float, start: date, end: date, today: date | N
         })["daily"]
         days = [
             DayWeather(t, hi, lo, None if p is None else p / 100)
-            for t, hi, lo, p in zip(d["time"], d["temperature_2m_max"], d["temperature_2m_min"], d["precipitation_probability_max"])
+            for t, hi, lo, p in zip(d["time"], d["temperature_2m_max"], d["temperature_2m_min"], d["precipitation_probability_max"], strict=False)
         ]
         return TripWeather("forecast", f"Open-Meteo forecast, fetched {today.isoformat()}", ATTRIBUTION, days)
 
@@ -94,7 +94,7 @@ def trip_weather(lat: float, lon: float, start: date, end: date, today: date | N
             "daily": "temperature_2m_max,temperature_2m_min,precipitation_sum",
             "start_date": s.isoformat(), "end_date": e.isoformat(),
         })["daily"]
-        for offset, (hi, lo, rain) in enumerate(zip(d["temperature_2m_max"], d["temperature_2m_min"], d["precipitation_sum"])):
+        for offset, (hi, lo, rain) in enumerate(zip(d["temperature_2m_max"], d["temperature_2m_min"], d["precipitation_sum"], strict=False)):
             key = (start + timedelta(days=offset)).isoformat()
             per_day.setdefault(key, []).append((hi, lo, rain))
 
