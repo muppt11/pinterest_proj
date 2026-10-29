@@ -28,9 +28,14 @@
   display: flex;
   gap: 4px;
   flex-shrink: 0;
+  min-width: 0;
+  max-width: 100%;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
 }
 
 .mb-nav a {
+  flex-shrink: 0;
   padding: 12px 16px;
   border-radius: var(--mb-radius-pill);
   color: var(--mb-ink);
@@ -183,4 +188,9 @@
   .mb-wordmark {
     display: none;
   }
+}
+
+/* Let the navigation scroll away when zoom or landscape mode leaves little vertical room. */
+@media (max-height: 500px) {
+  .mb-header { position: relative; }
 }

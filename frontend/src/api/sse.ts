@@ -7,12 +7,12 @@ export interface SseEvent {
 /** Parse complete `event:`/`data:` blocks out of a buffer; returns parsed events and the leftover text. */
 export function parseSse(buffer: string): { events: SseEvent[]; rest: string } {
   const events: SseEvent[] = [];
-  const blocks = buffer.split("\n\n");
+  const blocks = buffer.split(/\r?\n\r?\n/);
   const rest = blocks.pop() ?? "";
   for (const block of blocks) {
     let event = "message";
     const data: string[] = [];
-    for (const line of block.split("\n")) {
+    for (const line of block.split(/\r?\n/)) {
       if (line.startsWith("event:")) event = line.slice(6).trim();
       else if (line.startsWith("data:")) data.push(line.slice(5).trimStart());
     }
@@ -31,14 +31,19 @@ export async function* streamSse(response: Response): AsyncGenerator<SseEvent> {
   const reader = response.body.getReader();
   const decoder = new TextDecoder();
   let buffer = "";
-  for (;;) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    buffer += decoder.decode(value, { stream: true });
-    const { events, rest } = parseSse(buffer);
-    buffer = rest;
+  try {
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      const { events, rest } = parseSse(buffer);
+      buffer = rest;
+      yield* events;
+    }
+    const { events } = parseSse(buffer + decoder.decode() + "\n\n");
     yield* events;
+  } finally {
+    try { await reader.cancel(); } catch { /* The connection may already have failed. */ }
+    reader.releaseLock();
   }
-  const { events } = parseSse(buffer + "\n\n");
-  yield* events;
 }

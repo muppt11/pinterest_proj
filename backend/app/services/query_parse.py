@@ -8,6 +8,7 @@ import re
 from dataclasses import dataclass
 
 from app.services.color_search import COLOR_NAMES
+from app.services.complete_look import GROUPS
 
 # Garment words (singular and plural) -> dataset labels. Only labels that exist in the catalog.
 CATEGORY_WORDS: dict[str, set[str]] = {
@@ -20,15 +21,15 @@ CATEGORY_WORDS: dict[str, set[str]] = {
     "shoe": {"Shoes"}, "heels": {"Shoes"}, "sandals": {"Shoes"}, "loafers": {"Shoes"}, "trainers": {"Shoes"},
     "hat": {"Hat"}, "cap": {"Hat"}, "beanie": {"Hat"}, "fedora": {"Hat"},
     "blazer": {"Blazer"}, "suit": {"Blazer"},
-    "jacket": {"Outwear", "Blazer"}, "coat": {"Outwear"}, "parka": {"Outwear"}, "bomber": {"Outwear"},
+    "jacket": {"Outwear"}, "coat": {"Outwear"}, "parka": {"Outwear"}, "bomber": {"Outwear"},
     "puffer": {"Outwear"}, "windbreaker": {"Outwear"}, "outerwear": {"Outwear"},
     "hoodie": {"Hoodie"}, "sweatshirt": {"Hoodie", "Longsleeve"},
     "polo": {"Polo"},
     "tee": {"T-Shirt"}, "t-shirt": {"T-Shirt"}, "tshirt": {"T-Shirt"},
-    "shirt": {"Shirt"}, "button-up": {"Shirt"}, "button-down": {"Shirt"}, "blouse": {"Blouse", "Shirt"},
+    "shirt": {"Shirt", "T-Shirt"}, "button-up": {"Shirt"}, "button-down": {"Shirt"}, "blouse": {"Blouse"},
     "sweater": {"Longsleeve"}, "cardigan": {"Longsleeve"}, "turtleneck": {"Longsleeve"}, "jumper": {"Longsleeve"},
     "knit": {"Longsleeve"},
-    "top": {"Top", "T-Shirt", "Undershirt", "Body", "Blouse"}, "tank": {"Undershirt", "Top"},
+    "top": GROUPS["tops"], "tank": {"Undershirt", "Top"},
     "cami": {"Top", "Undershirt"}, "bodysuit": {"Body"},
 }
 
@@ -37,7 +38,29 @@ FAMILY_WORDS = {
     "neon": "brights", "bright": "brights", "vibrant": "brights",
     "neutral": "neutrals", "neutrals": "neutrals",
     "earthy": "earth tones",
+    "dark": "darks", "darks": "darks", "brights": "brights",
 }
+
+# Consume compound garments first: "dress shirt" is a shirt, "shirt dress" is a dress.
+CATEGORY_PHRASES = [
+    (re.compile(pattern), categories)
+    for pattern, categories in [
+        (r"\bdress shirts?\b", {"Shirt"}),
+        (r"\bshirt dress(?:es)?\b", {"Dress"}),
+        (r"\bpolo shirts?\b", {"Polo"}),
+        (r"\btank tops?\b", {"Undershirt", "Top"}),
+        (r"\bcrop(?:ped)? tops?\b", {"Top"}),
+        (r"\blong[ -]?sleeve(?:d)? (?:tops?|shirts?)\b", {"Longsleeve"}),
+        (r"\bbutton[ -](?:up|down)(?: shirts?)?\b", {"Shirt"}),
+        (r"\b(?:t[ -]shirts?|tee shirts?)\b", {"T-Shirt"}),
+    ]
+]
+
+# Generate only known regular plurals; don't stem arbitrary words (e.g. "dress" or "jeans").
+for _word, _categories in list(CATEGORY_WORDS.items()):
+    if not _word.endswith("s"):
+        CATEGORY_WORDS.setdefault(_word + ("es" if _word.endswith(("ch", "sh")) else "s"), _categories)
+CATEGORY_WORDS["dresses"] = {"Dress"}
 
 _COLOR_PATTERN = re.compile(
     r"\b(" + "|".join(sorted((re.escape(c) for c in COLOR_NAMES), key=len, reverse=True)) + r")\b"
@@ -50,6 +73,7 @@ class ParsedQuery:
     categories: set[str] | None  # None = no garment word found
     color: str | None  # a named color from COLOR_NAMES
     family: str | None  # a color family word ("pastel" etc.)
+    kids: bool | None = None
 
     @property
     def summary(self) -> list[str]:
@@ -62,10 +86,18 @@ class ParsedQuery:
 
 
 def parse_query(query: str) -> ParsedQuery:
-    q = query.lower()
+    q = re.sub(r"\bgrey\b", "gray", query.lower())
     categories: set[str] = set()
-    for word in re.findall(r"[a-z]+(?:-[a-z]+)?", q):
+    garments = q
+    for pattern, matched_categories in CATEGORY_PHRASES:
+        if pattern.search(garments):
+            categories |= matched_categories
+            garments = pattern.sub(" ", garments)
+    for word in re.findall(r"[a-z]+(?:-[a-z]+)?", garments):
         categories |= CATEGORY_WORDS.get(word, set())
     color_match = _COLOR_PATTERN.search(q)
     family = next((FAMILY_WORDS[w] for w in re.findall(r"[a-z]+", q) if w in FAMILY_WORDS), None)
-    return ParsedQuery(query, categories or None, color_match.group(1) if color_match else None, family)
+    if re.search(r"\b(?:earth[ -]tones?|earth[ -]toned)\b", q):
+        family = "earth tones"
+    kids = True if re.search(r"\b(?:kids?|children|child|toddlers?|boys?|girls?|baby|babies|infants?)\b", q) else None
+    return ParsedQuery(query, categories or None, color_match.group(1) if color_match else None, family, kids)

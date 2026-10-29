@@ -10,7 +10,33 @@ beforeEach(() => {
   tipStore.resetSession();
 });
 
+afterEach(() => vi.restoreAllMocks());
+
 describe("FeatureTip", () => {
+  it("escapes clipped containers, flips above the anchor, and stays within the viewport", () => {
+    dismissWelcome();
+    let anchorTop = 600;
+    vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(function (this: HTMLElement) {
+      return this.classList.contains("mb-tip-anchor")
+        ? new DOMRect(950, anchorTop, 60, 40)
+        : new DOMRect(0, 0, 320, 220);
+    });
+    const { container } = render(
+      <div style={{ overflow: "hidden", height: 200 }}>
+        <FeatureTip tipId="shop"><button>Shop this look</button></FeatureTip>
+      </div>,
+    );
+    const dialog = screen.getByRole("dialog", { name: "Shop similar" });
+    expect(dialog.parentElement).toBe(document.body);
+    expect(container).not.toContainElement(dialog);
+    expect(dialog).toHaveStyle({ top: "370px", left: "692px", visibility: "visible" });
+    anchorTop = 200;
+    fireEvent.scroll(window);
+    expect(dialog).toHaveStyle({ top: "250px", left: "692px" });
+    fireEvent.click(screen.getByRole("button", { name: "Got it" }));
+    expect(dialog).not.toBeInTheDocument();
+  });
+
   it("waits for the welcome card, then shows how/why and stays dismissed after 'Got it'", () => {
     const { unmount } = render(
       <FeatureTip tipId="search">

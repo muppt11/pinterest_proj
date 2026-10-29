@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { altText, api, imageSrc, profileApi, type BoardAnalysis, type BoardContext, type Item, type Me, type SearchResults } from "./api/client";
-import type { GarmentGroup } from "./categories";
+import { categoryLabel, DEFAULT_FILTERS, type CatalogFilters } from "./categories";
 import { AssistantPanel } from "./components/AssistantPanel";
 import { FilterBar } from "./components/FilterBar";
 import { LabelBadge } from "./components/LabelBadge";
@@ -42,7 +42,10 @@ const PAGE_SIZE = 50;
 const SKELETON_RATIOS = [1.3, 1.5, 1.7, 1.25, 1.33, 1.4, 1.0, 1.6, 1.45, 1.2, 1.75, 1.3];
 
 /** Item id from a /item/<id> path, so close-ups survive reloads and the back button works. */
-const itemIdFromPath = (path: string) => decodeURIComponent(path.match(/^\/item\/(.+)$/)?.[1] ?? "") || null;
+function decodePathSegment(value: string): string {
+  try { return decodeURIComponent(value); } catch { return value; }
+}
+const itemIdFromPath = (path: string) => decodePathSegment(path.match(/^\/item\/(.+)$/)?.[1] ?? "") || null;
 const boardIdFromPath = (path: string) => {
   const id = Number(path.match(/^\/boards\/(\d+)$/)?.[1]);
   return Number.isInteger(id) && id > 0 ? id : null;
@@ -75,12 +78,14 @@ export default function App() {
   const personalizedRef = useRef(personalized);
   personalizedRef.current = personalized;
   // Garment-type and aesthetic filters for Discover ("Everything") and text search.
-  const [filters, setFilters] = useState<{ group: GarmentGroup | null; style: string | null }>({ group: null, style: null });
+  const [filters, setFilters] = useState<CatalogFilters>({ ...DEFAULT_FILTERS });
   const filtersRef = useRef(filters);
   filtersRef.current = filters;
   // Re-runs whatever the feed last showed (browse or a search) when the style focus changes.
   const rerun = useRef<() => void>(() => {});
   const sentinel = useRef<HTMLDivElement>(null);
+  const feedVersion = useRef(0);
+  const pagingVersion = useRef<number | null>(null);
   const openId = itemIdFromPath(path);
 
   useEffect(() => {
@@ -96,9 +101,12 @@ export default function App() {
   }, []);
 
   const run = useCallback(async (next: Feed, load: () => Promise<FeedPage>, goHome = true) => {
+    const version = ++feedVersion.current;
+    pagingVersion.current = null;
     setFeed(next);
     if (goHome) navigate("/");
     setItems([]);
+    setTotal(0);
     setLowRelevance(false);
     setShowWeak(false);
     setRepostOf(null);
@@ -108,6 +116,7 @@ export default function App() {
     setError(null);
     try {
       const page = await load();
+      if (version !== feedVersion.current) return;
       setItems(page.items);
       setTotal(page.total);
       setLowRelevance(page.lowRelevance ?? false);
@@ -115,22 +124,25 @@ export default function App() {
       setUnderstood(page.understood ?? []);
       setUploadProvenance(page.uploadProvenance ?? null);
     } catch (e) {
-      setError((e as Error).message);
+      if (version === feedVersion.current) setError((e as Error).message);
     } finally {
-      setLoading(false);
+      if (version === feedVersion.current) setLoading(false);
     }
   }, [navigate]);
 
   const loadPage = useCallback(async (offset: number): Promise<FeedPage> => {
     if (personalizedRef.current) {
-      const r = await profileApi.forYou(offset, PAGE_SIZE);
+      const r = await profileApi.forYou(offset, PAGE_SIZE, filtersRef.current);
       // The For you feed doesn't report a total; assume more while pages come back full.
       return { items: r.items, total: offset + r.items.length + (r.items.length === PAGE_SIZE ? 1 : 0) };
     }
     return api.listItems(offset, PAGE_SIZE, filtersRef.current);
   }, []);
 
-  const browse = useCallback((goHome = true) => run({ kind: "browse" }, () => loadPage(0), goHome), [run, loadPage]);
+  const browse = useCallback((goHome = true) => {
+    rerun.current = () => browse(false);
+    return run({ kind: "browse" }, () => loadPage(0), goHome);
+  }, [run, loadPage]);
 
   // Load the home feed once in the background, without leaving a deep-linked page.
   useEffect(() => {
@@ -158,7 +170,7 @@ export default function App() {
     }
     if (window.location.pathname === "/" && feed.kind === "browse") browse(false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [personalized]);
+  }, [personalized, me?.prefs]);
 
   const firstFocus = useRef(true);
   useEffect(() => {
@@ -171,16 +183,23 @@ export default function App() {
   }, [focus]);
 
   const loadMore = useCallback(async () => {
-    if (feed.kind !== "browse" || loading || items.length >= total) return;
+    const version = feedVersion.current;
+    if (feed.kind !== "browse" || loading || items.length >= total || pagingVersion.current === version) return;
+    pagingVersion.current = version;
     setLoading(true);
+    setError(null);
     try {
       const page = await loadPage(items.length);
+      if (version !== feedVersion.current) return;
       setItems((prev) => [...prev, ...page.items]);
       setTotal(page.total);
     } catch (e) {
-      setError((e as Error).message);
+      if (version === feedVersion.current) setError((e as Error).message);
     } finally {
-      setLoading(false);
+      if (version === feedVersion.current) {
+        pagingVersion.current = null;
+        setLoading(false);
+      }
     }
   }, [feed.kind, loading, items.length, total, loadPage]);
 
@@ -215,7 +234,7 @@ export default function App() {
   const searchText = (query: string) => {
     rerun.current = () => searchText(query);
     return run({ kind: "text", query }, async () => {
-      const r = await api.searchText(query, 50, filtersRef.current.group);
+      const r = await api.searchText(query, 50, filtersRef.current);
       return { items: r.results, total: r.results.length, lowRelevance: r.low_relevance, understood: r.understood };
     });
   };
@@ -223,7 +242,7 @@ export default function App() {
   const searchColor = (hex: string, query: string) => {
     rerun.current = () => searchColor(hex, query);
     return run({ kind: "color", hex, query }, async () => {
-      const r = await api.searchColor(hex, query || undefined);
+      const r = await api.searchColor(hex, query || undefined, PAGE_SIZE, filtersRef.current);
       return { items: r.results, total: r.results.length };
     });
   };
@@ -231,7 +250,7 @@ export default function App() {
   const searchImage = (file: File) => {
     rerun.current = () => searchImage(file);
     return run({ kind: "image", fileName: file.name }, async () => {
-      const r = await api.searchImage(file);
+      const r = await api.searchImage(file, PAGE_SIZE, filtersRef.current);
       return { items: r.results, total: r.results.length, repostOf: r.repost_of, uploadProvenance: r.upload_provenance };
     });
   };
@@ -250,7 +269,7 @@ export default function App() {
   if (path.startsWith("/t/")) {
     return (
       <main style={{ padding: "24px var(--mb-gutter) 64px" }}>
-        <PublicTripPage slug={decodeURIComponent(path.slice(3))} />
+        <PublicTripPage slug={decodePathSegment(path.slice(3))} />
       </main>
     );
   }
@@ -280,7 +299,7 @@ export default function App() {
         ) : /^\/trips\/\d+$/.test(path) ? (
           <TripPage tripId={Number(path.split("/")[2])} onOpen={openFromFeed} onNavigate={navigate} />
         ) : path.startsWith("/join/") ? (
-          <JoinPage token={decodeURIComponent(path.slice(6))} signedIn={meLoaded ? !!me : null} onNavigate={navigate} />
+          <JoinPage token={decodePathSegment(path.slice(6))} signedIn={meLoaded ? !!me : null} onNavigate={navigate} />
         ) : path === "/welcome" ? (
           <StyleQuiz
             mode="onboarding"
@@ -360,12 +379,10 @@ export default function App() {
               </p>
             )}
             {!error && !loading && items.length === 0 && (
-              <p className="mb-notice">No matches. Try different words or another photo.</p>
+              <p className="mb-notice">No matches for these choices. Broaden the filters or try another description or photo.</p>
             )}
-            {((feed.kind === "browse" && !personalized) || feed.kind === "text") && (
               <FilterBar
-                group={filters.group}
-                style={filters.style}
+                value={filters}
                 showStyle={feed.kind === "browse"}
                 onChange={(next) => {
                   setFilters(next);
@@ -373,11 +390,13 @@ export default function App() {
                   rerun.current();
                 }}
               />
+            {!loading && !error && (!lowRelevance || showWeak) && items.length > 0 && (
+              <p className="mb-results-count" role="status">{feed.kind === "browse" && !personalized ? total : items.length} {filters.category ? categoryLabel(filters.category).toLowerCase() + " " : ""}results{feed.kind === "browse" && !personalized ? "" : " shown"}</p>
             )}
             {understood.length > 0 && feed.kind === "text" && !lowRelevance && (
               <ul className="mb-tags mb-understood" aria-label="Search understood as">
                 {understood.map((u) => (
-                  <li key={u}>{u}</li>
+                  <li key={u}>{categoryLabel(u)}</li>
                 ))}
               </ul>
             )}
@@ -397,7 +416,7 @@ export default function App() {
                 </p>
               </div>
             )}
-            {lowRelevance && !showWeak && feed.kind === "text" ? (
+            {lowRelevance && !showWeak && feed.kind === "text" && items.length > 0 ? (
               <div className="mb-notice mb-weak" role="status">
                 <p>
                   MoodBoards' catalog is clothing only, and nothing matched “{feed.query}” closely. Try describing

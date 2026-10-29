@@ -5,7 +5,7 @@
 
 .mb-boardtiles {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(200px, 100%), 1fr));
   gap: 24px 16px;
   margin: 16px 0 32px;
   padding: 0;
@@ -13,13 +13,14 @@
 }
 
 .mb-boardtiles.is-small {
-  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(140px, 100%), 1fr));
 }
 
 .mb-boardtile {
   display: flex;
   flex-direction: column;
   width: 100%;
+  min-width: 0;
   padding: 0;
   border: 0;
   background: none;
@@ -43,6 +44,8 @@
 }
 
 .mb-boardtile-name {
+  max-width: 100%;
+  overflow-wrap: anywhere;
   margin-top: 8px;
   font-size: 1.05rem;
   font-weight: 700;
@@ -82,6 +85,8 @@
   color: var(--mb-ink-muted);
   font-size: 0.9rem;
 }
+
+.mb-breadcrumb li { min-width: 0; overflow-wrap: anywhere; }
 
 .mb-breadcrumb li + li::before {
   content: "›";

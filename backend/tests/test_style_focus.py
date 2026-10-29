@@ -65,7 +65,7 @@ def test_focus_filters_browse_and_search(client: TestClient) -> None:
 
 def test_focus_applies_to_similar_and_complete_look(client: TestClient) -> None:
     similar = client.get("/items/shoes-boot/similar", params={"focus": "men"}).json()
-    assert ids(similar) == {"pants-jeans"}
+    assert ids(similar) == set()  # same-category and same-audience matching is strict
     look = client.post("/complete-look?focus=women", json={"item_id": "tshirt-red"}).json()
     assert all(r["id"] != "pants-jeans" for g in look["groups"] for r in g["results"])
 

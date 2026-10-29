@@ -90,20 +90,26 @@ export function AssistantPanel({ open, onClose, onOpenItem, contextItemIds, boar
         { message, history, context_item_ids: contextItemIds, board },
         abort.current.signal,
       );
+      let finished = false;
       for await (const { event, data } of streamSse(response)) {
         const d = data as Record<string, unknown>;
         if (event === "tool") {
           const label = TOOL_LABELS[d.name as string] ?? (d.name as string);
           update((m) => ({ ...m, activity: [...(m.activity ?? []), label] }));
-        } else if (event === "token") {
-          update((m) => ({ ...m, text: m.text + (d.text as string) }));
         } else if (event === "done") {
           const items = d.items as Item[];
           const itemsSource = (d.items_source as Message["itemsSource"]) ?? "cited";
           update((m) => ({ ...m, text: renderCitations(d.text as string, items), items, itemsSource, pending: false }));
+          finished = true;
+          break;
         } else if (event === "error") {
           update((m) => ({ ...m, text: d.message as string, error: true, pending: false }));
+          finished = true;
+          break;
         }
+      }
+      if (!finished) {
+        update((m) => ({ ...m, text: "The response ended before it finished. Please try again.", error: true, pending: false }));
       }
     } catch (e) {
       if ((e as Error).name !== "AbortError") {
@@ -130,29 +136,27 @@ export function AssistantPanel({ open, onClose, onOpenItem, contextItemIds, boar
         </button>
       </header>
       <p className="mb-assistant-note">
-        Runs locally. Every item it shows comes from a catalog search it ran just now, never from memory.
-        {contextItemIds.length > 0 && " It can see the item you have open."}
-        {board && " It can see your analyzed board."}
+        Every item it shows comes from a catalog search
       </p>
 
-      {status && !status.available && (
-        <div className="mb-assistant-setup" role="status">
-          <strong>The assistant runs on a local AI model, and it isn't set up on this computer yet.</strong>
-          {status.reason === "api_unreachable" ? (
-            <p>Couldn't reach the MoodBoards API. Is the backend running?</p>
-          ) : (
-            <>
-              <p>To turn it on, install Ollama and download the model once:</p>
-              <pre>
-                {status.reason === "ollama_not_running" ? "open -a Ollama\n" : ""}ollama pull {status.model}
-              </pre>
-              <p>Everything else in MoodBoards works without it.</p>
-            </>
-          )}
-        </div>
-      )}
-
       <ol className="mb-assistant-log" aria-live="polite">
+        {status && !status.available && (
+          <li className="mb-assistant-setup" role="status">
+            <strong>The assistant runs on a local AI model, and it isn't set up on this computer yet.</strong>
+            {status.reason === "api_unreachable" ? (
+              <p>Couldn't reach the MoodBoards API. Is the backend running?</p>
+            ) : (
+              <>
+                <p>To turn it on, install Ollama and download the model once:</p>
+                <pre>
+                  {status.reason === "ollama_not_running" ? "open -a Ollama\n" : ""}ollama pull {status.model}
+                </pre>
+                <p>Everything else in MoodBoards works without it.</p>
+              </>
+            )}
+          </li>
+        )}
+
         {messages.length === 0 && status?.available !== false && (
           <li className="mb-assistant-suggestions">
             <span className="mb-assistant-suggest-label">Try asking</span>

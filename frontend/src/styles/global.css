@@ -139,6 +139,9 @@ textarea {
 
 .mb-feed-toggle {
   display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  min-width: 0;
   padding: 4px;
   border-radius: var(--mb-radius-pill);
   background: var(--mb-surface-muted);
@@ -244,6 +247,25 @@ textarea {
   gap: 6px;
   justify-content: center;
 }
+
+.mb-filter-details {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: end;
+  justify-content: center;
+  flex-basis: 100%;
+}
+
+.mb-filter-style {
+  display: grid;
+  gap: 5px;
+  font-size: 12px;
+  color: var(--mb-ink-muted);
+}
+
+.mb-filter-reset { min-height: 38px; }
+.mb-results-count { text-align: center; color: var(--mb-ink-muted); font-size: 13px; }
 
 .mb-filter-chips button {
   padding: 8px 14px;

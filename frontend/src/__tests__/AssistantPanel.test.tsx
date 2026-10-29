@@ -59,6 +59,33 @@ describe("AssistantPanel", () => {
     expect(await screen.findByText("The assistant model isn't reachable.")).toBeInTheDocument();
   });
 
+  it("ends the pending message if the connection closes without a final answer", async () => {
+    vi.stubGlobal("fetch", withStatus(READY, () => sseResponse([["token", { text: "unfinished" }]])));
+    render(<AssistantPanel {...props} />);
+    fireEvent.click(await screen.findByRole("button", { name: "What shoes would finish this look?" }));
+    expect(await screen.findByText("The response ended before it finished. Please try again.")).toBeInTheDocument();
+    expect(screen.queryByText("Thinking…")).not.toBeInTheDocument();
+  });
+
+  it("waits for validated text before displaying streamed product IDs", async () => {
+    let controller!: ReadableStreamDefaultController<Uint8Array>;
+    const encoder = new TextEncoder();
+    const stream = new ReadableStream<Uint8Array>({ start(c) { controller = c; } });
+    vi.stubGlobal("fetch", withStatus(READY, () => new Response(stream)));
+    render(<AssistantPanel {...props} />);
+    fireEvent.click(await screen.findByRole("button", { name: "What shoes would finish this look?" }));
+    controller.enqueue(encoder.encode(
+      'event: token\ndata: {"text":"1. [Outwear:raw-id]"}\n\n' +
+      'event: tool\ndata: {"name":"search_similar"}\n\n',
+    ));
+    expect(await screen.findByText("Searching the catalog…")).toBeInTheDocument();
+    expect(screen.queryByText(/raw-id/)).not.toBeInTheDocument();
+    expect(screen.getByText("Thinking…")).toBeInTheDocument();
+    controller.enqueue(encoder.encode('event: done\ndata: {"text":"Here are some jackets.","items":[]}\n\n'));
+    controller.close();
+    expect(await screen.findByText("Here are some jackets.")).toBeInTheDocument();
+  });
+
   it("explains setup up front when the local model isn't available", async () => {
     vi.stubGlobal("fetch", withStatus({ available: false, model: "qwen3:8b", reason: "model_not_pulled" }, () => new Response("")));
     render(<AssistantPanel {...props} />);

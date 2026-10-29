@@ -1,0 +1,33 @@
+.mb-page-title {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 2fr) minmax(0, 1fr);
+  align-items: center;
+  gap: 12px;
+  margin: 4px 0 20px;
+}
+
+.mb-page-title h1 {
+  min-width: 0;
+  margin: 0;
+  font-size: 1.4rem;
+  font-weight: 700;
+  text-align: center;
+  overflow-wrap: anywhere;
+}
+
+.mb-page-title-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+  min-width: 0;
+}
+
+.mb-page-title-actions > * { max-width: 100%; }
+
+@media (max-width: 640px) {
+  .mb-page-title { grid-template-columns: minmax(0, 1fr); }
+  .mb-page-title-spacer,
+  .mb-page-title-actions:empty { display: none; }
+  .mb-page-title-actions { justify-content: center; }
+}

@@ -24,10 +24,11 @@ def complete_look_endpoint(
     centroid = None
     if body.centroid is not None:
         centroid = np.asarray(body.centroid, dtype=np.float32)
-        if centroid.shape != (catalog.index.d,) or not np.isfinite(centroid).all() or np.linalg.norm(centroid) == 0:
+        norm = np.linalg.norm(centroid)
+        if centroid.shape != (catalog.index.d,) or not np.isfinite(centroid).all() or not np.isfinite(norm) or norm == 0:
             raise HTTPException(status_code=422, detail=f"centroid must be a non-zero vector of length {catalog.index.d}.")
     try:
-        group, groups = complete_look(catalog, body.item_id, body.per_group, centroid, body.item_weight, focus.excluded)
+        group, groups = complete_look(catalog, body.item_id, body.per_group, centroid, body.item_weight, focus.excluded, bias=focus.bias)
     except KeyError:
         raise HTTPException(status_code=404, detail="Item not found.") from None
     return CompleteLook(

@@ -86,7 +86,7 @@ The five differentiators:
 | 7c | Shop similar: outbound Google Shopping / Lens links from an item's real attributes | done |
 | 2b | Character style boards: written style profiles of iconic film/TV looks → catalog matches | done |
 | 8 | Checklist save to multiple boards, nested sub-boards, undo toast | done |
-| 8c | Discover filters: garment-type chips (Tops, Bottoms, Dresses, Outerwear, Shoes, Hats) and an aesthetic picker that re-ranks the feed | done |
+| 8c | Filters: garment groups, exact catalog categories with counts, adults/kids, color families, and an aesthetic picker | done |
 | 8b | Style-focus filter (Menswear / Womenswear / All) chosen in a first-visit welcome popup; estimated by CLIP zero-shot, labeled "estimated", ambiguous items count as unisex | done |
 | 8d | Sign-up with a skippable style quiz (aesthetics, color families, eras, focus) → personalized For you feed | done |
 | 9 | Group trip outfit planning | done |
@@ -100,7 +100,7 @@ The five differentiators:
 - Every catalog image is embedded once with Marqo-FashionCLIP, a CLIP model fine-tuned on fashion.
 - Vectors are L2-normalized and stored in a FAISS `IndexFlatIP`, where inner product equals cosine similarity.
 - Text queries and uploaded photos go through the same model, so either one can be compared directly with item images.
-- "More like this" reuses each item's stored vector, so it needs no extra model call.
+- "More like this" reuses each item's stored vector, so it needs no extra model call. It defaults to the same category and audience; "Similar styles" broadens the garment category.
 
 **Why this approach.**
 - At about 5k items, exact search takes about a millisecond, so an approximate index (IVF or HNSW) would add recall loss and tuning for no benefit.
@@ -329,7 +329,10 @@ So MoodBoards hands off to Google and never displays prices, stores, or availabi
 
 **What it does.**
 - **Garment-type chips** (Tops, Bottoms, Dresses, Outerwear, Shoes, Hats) narrow the feed or any search.
+- **Exact categories** narrow each group further: for example, Tops → T-shirt, Shirt, Polo, Hoodie or Bodysuit; Outerwear → Outerwear or Blazer. Choices use the catalog's recorded labels, with counts under the selected audience, palette and style focus. Unavailable choices are disabled.
+- **Audience** (Adults & kids, Adults, Kids) and **color family** (neutrals, brights, pastels, darks, earth tones) combine with category filters across browsing, text, photo, color, personalized recommendations and the mood picker. Clear filters resets the combination.
 - An **aesthetic picker** re-ranks the feed by that aesthetic's signature garments, rotating across them so one garment type doesn't take over.
+- Compound queries stay specific: "dress shirt" searches shirts, "shirt dress" searches dresses, and jackets don't automatically include blazers. An unavailable garment returns no matches instead of silently widening to unrelated clothes.
 - Category names are cleaned up for display: the dataset's "Outwear" (a typo in the source), "Longsleeve" and "Body" show as Outerwear, Long-sleeve top and Bodysuit.
 
 **Checked on real data.**
@@ -486,7 +489,7 @@ Some features are built here in a reduced but honest form, because the full vers
 
 - **The catalog is dated and narrow.** It's the only openly licensed clothing dataset I confirmed (CC0, crowd-sourced photos from around 2020): 5,163 items, mostly dark and neutral, with only 65 true pastels. Some looks simply aren't in it, and the app says "closest available" rather than pretending. A modern, licensed product catalog is the biggest upgrade available.
 - **The assistant needs a local model.** It runs on Ollama (qwen3:8b), which isn't bundled. Without it, the panel explains how to set it up, and everything else works.
-- **Category labels are coarse.** "Denim jacket" can return blazers, because the dataset has no denim or jacket-type labels. Search makes up for some of this with query understanding and FashionCLIP.
+- **Category labels are coarse.** Exact filters use the 18 recorded categories; shoe types, materials and cuts remain text-search signals rather than verified product attributes. Search uses query understanding and FashionCLIP to rank within those categories.
 - **Menswear / Womenswear is an estimate** (see 8b), and unisex basics show under both.
 - **Board analysis thresholds** keep 66% of one-look boards whole and split 93% of two-look boards on synthetic tests. Real boards will vary.
 - **Repost detection** misses crops beyond about 10% (57% recall at 5% per side).

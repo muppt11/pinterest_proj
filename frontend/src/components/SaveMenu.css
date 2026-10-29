@@ -6,6 +6,8 @@
   gap: 8px;
   width: min(320px, calc(100vw - 32px));
   max-height: min(480px, calc(100vh - 32px));
+  overflow-y: auto;
+  overscroll-behavior: contain;
   padding: 16px;
   border-radius: var(--mb-radius-card);
   background: var(--mb-surface);
@@ -26,7 +28,9 @@
 }
 
 .mb-savemenu-list {
-  flex: 1;
+  flex: 1 0 auto;
+  min-height: 80px;
+  max-height: 260px;
   overflow-y: auto;
   margin: 0;
   padding: 0;
@@ -47,6 +51,7 @@
 }
 
 .mb-savemenu-list input {
+  flex-shrink: 0;
   width: 18px;
   height: 18px;
   accent-color: var(--mb-primary);
@@ -63,7 +68,16 @@
 }
 
 .mb-savemenu-list span {
+  min-width: 0;
+  overflow-wrap: anywhere;
   font-weight: 600;
+}
+
+.mb-savemenu-title,
+.mb-savemenu-empty,
+.mb-savemenu-create,
+.mb-savemenu-apply {
+  flex-shrink: 0;
 }
 
 .mb-savemenu-create {

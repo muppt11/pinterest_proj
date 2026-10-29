@@ -25,4 +25,20 @@ describe("LabelBadge", () => {
     fireEvent.click(button);
     expect(screen.getByText("No provenance metadata.")).toBeInTheDocument();
   });
+
+  it("keeps the explanation outside clipped image cards and open while reading it", () => {
+    const { container } = render(
+      <div style={{ overflow: "hidden", width: 100, height: 100 }}>
+        <LabelBadge compact provenance={{ label: "unknown", explanation: "Read this explanation without clipping.", evidence: [] }} />
+      </div>,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "No provenance: why?" }));
+    const dialog = screen.getByRole("dialog", { name: "Why this label" });
+    expect(dialog.parentElement).toBe(document.body);
+    expect(container).not.toContainElement(dialog);
+    fireEvent.mouseDown(screen.getByText("Read this explanation without clipping."));
+    expect(dialog).toBeInTheDocument();
+    fireEvent.mouseDown(document.body);
+    expect(dialog).not.toBeInTheDocument();
+  });
 });

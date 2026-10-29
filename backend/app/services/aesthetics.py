@@ -7,6 +7,8 @@ everything toward generic shirts in testing), and results rotate across the phra
 doesn't take the whole board. Each match carries the phrase it matched, so results explain themselves.
 """
 
+from collections import deque
+from collections.abc import Sequence
 from dataclasses import dataclass
 
 import numpy as np
@@ -43,7 +45,7 @@ ERA_PHRASES: dict[str, tuple[str, ...]] = {
 
 STYLE_WORDS = list(AESTHETIC_PHRASES)
 
-# Only items in the top POOL by best-phrase score are eligible; then results rotate across phrases.
+# Rotate across phrases within relevance bands of this size, keeping weak matches on later pages.
 POOL = 400
 
 
@@ -55,6 +57,8 @@ class PhraseScores:
 
     def normalized(self) -> np.ndarray:
         """0..1 per query: the median item maps to 0, the 99th percentile to 1 (robust to prompt scale)."""
+        if not len(self.best):
+            return self.best.copy()
         lo, hi = np.percentile(self.best, [50, 99])
         return np.clip((self.best - lo) / max(hi - lo, 1e-6), 0, 1)
 
@@ -89,7 +93,7 @@ def bank_for(embedder: Embedder) -> PhraseBank:
     return _BANKS[key]
 
 
-def phrases_for(aesthetics: list[str] = (), eras: list[str] = ()) -> list[str]:  # type: ignore[assignment]
+def phrases_for(aesthetics: Sequence[str] = (), eras: Sequence[str] = ()) -> list[str]:
     out: list[str] = []
     for a in aesthetics:
         out.extend(AESTHETIC_PHRASES[a])
@@ -98,23 +102,27 @@ def phrases_for(aesthetics: list[str] = (), eras: list[str] = ()) -> list[str]: 
     return list(dict.fromkeys(out))
 
 
-def diversified_order(scores: np.ndarray, phrase_of: np.ndarray, eligible: np.ndarray | None = None, pool: int = POOL) -> list[int]:
+def diversified_order(scores: np.ndarray, phrase_of: np.ndarray, eligible: np.ndarray | None = None, pool: int | None = POOL) -> list[int]:
     """Rows ranked by `scores`, then interleaved round-robin across matched phrases.
 
     `scores` is the final ranking score (may already blend color); `phrase_of` groups rows by garment.
+    With pool=None, return the whole catalog in fixed bands, so pages stay stable and distant
+    matches from a rare phrase cannot displace the strongest matches on the first page.
     """
     s = np.where(eligible, scores, -np.inf) if eligible is not None else scores
     top = [int(r) for r in np.argsort(-s, kind="stable")[:pool] if np.isfinite(s[r])]
-    buckets: dict[int, list[int]] = {}
-    for r in top:
-        buckets.setdefault(int(phrase_of[r]), []).append(r)
-    queues = sorted(buckets.values(), key=lambda b: -s[b[0]])
     out: list[int] = []
-    while queues:
-        for q in list(queues):
-            out.append(q.pop(0))
-            if not q:
-                queues.remove(q)
+    band_size = POOL if pool is None else max(1, len(top))
+    for start in range(0, len(top), band_size):
+        buckets: dict[int, deque[int]] = {}
+        for r in top[start : start + band_size]:
+            buckets.setdefault(int(phrase_of[r]), deque()).append(r)
+        queues = sorted(buckets.values(), key=lambda b: -s[b[0]])
+        while queues:
+            for q in list(queues):
+                out.append(q.popleft())
+                if not q:
+                    queues.remove(q)
     return out
 
 

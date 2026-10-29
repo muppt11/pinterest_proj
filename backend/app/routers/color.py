@@ -6,18 +6,20 @@ from urllib.parse import quote_plus
 import numpy as np
 from fastapi import APIRouter, Depends, HTTPException, Query
 
-from app.deps import FocusFilter, get_catalog, get_describer, get_embedder, get_focus
+from app.deps import CatalogFilters, FocusFilter, get_catalog, get_describer, get_embedder, get_filters, get_focus
 from app.models import ColorMatchItem, ColorResults, Item, ShopLinks
 from app.services.aesthetics import STYLE_WORDS, bank_for, phrases_for
 from app.services.catalog import Catalog
 from app.services.color_search import ColorHit, color_index, color_name, color_search
 from app.services.embedder import Embedder
+from app.services.query_parse import parse_query
 
 router = APIRouter(tags=["color"])
 
 CatalogDep = Annotated[Catalog, Depends(get_catalog)]
 EmbedderDep = Annotated[Embedder, Depends(get_embedder)]
 FocusDep = Annotated[FocusFilter, Depends(get_focus)]
+FiltersDep = Annotated[CatalogFilters, Depends(get_filters)]
 HexColor = Annotated[str, Query(pattern=r"^#?[0-9a-fA-F]{6}$", description="picked color, e.g. #9caf88")]
 Weight = Annotated[float, Query(ge=0, le=1, description="1 = color only, 0 = text/style only")]
 K = Annotated[int, Query(ge=1, le=100)]
@@ -60,6 +62,7 @@ def search_color(
     catalog: CatalogDep,
     embedder: EmbedderDep,
     focus: FocusDep,
+    filters: FiltersDep,
     hex: HexColor,
     q: Annotated[str | None, Query(max_length=200)] = None,
     k: K = 30,
@@ -67,9 +70,20 @@ def search_color(
 ) -> ColorResults:
     """Items whose dominant colors are perceptually closest to `hex` (CIEDE2000), optionally blended
     with a text query through the CLIP text encoder, e.g. hex=#9caf88 & q=linen."""
-    query = q.strip() if q else None
+    query = (q or "").strip() or None
     text_vector = embedder.embed_texts([query])[0] if query else None
-    hits = color_search(catalog, color_index(catalog), hex, k, text_vector, color_weight if query else 1.0, allowed=focus.mask, focus_boost=_boost(focus))
+    allowed = filters.mask.copy()
+    if query:
+        parsed = parse_query(query)
+        if filters.category is None:
+            categories = parsed.categories
+            if filters.categories is not None:
+                categories = (categories & filters.categories) or filters.categories if categories else filters.categories
+            if categories is not None:
+                allowed &= np.array([item["category"] in categories for item in catalog.items], dtype=bool)
+        if filters.kids is None and parsed.kids:
+            allowed &= np.array([item["kids"] for item in catalog.items], dtype=bool)
+    hits = color_search(catalog, color_index(catalog), hex, k, text_vector, color_weight if query else 1.0, allowed=allowed, focus_boost=_boost(focus))
     return ColorResults(color=_hex(hex), query=query, color_weight=color_weight if query else 1.0, results=_results(catalog, hits))
 
 
@@ -84,6 +98,7 @@ def mood(
     catalog: CatalogDep,
     embedder: EmbedderDep,
     focus: FocusDep,
+    filters: FiltersDep,
     hex: HexColor,
     style: str,
     k: K = 30,
@@ -93,7 +108,7 @@ def mood(
     if style not in STYLE_WORDS:
         raise HTTPException(status_code=422, detail=f"Unknown style. Choose from: {', '.join(STYLE_WORDS)}")
     scores = bank_for(embedder).score(catalog.matrix, phrases_for([style]))
-    hits = color_search(catalog, color_index(catalog), hex, k, None, color_weight, allowed=focus.mask, style=scores, focus_boost=_boost(focus))
+    hits = color_search(catalog, color_index(catalog), hex, k, None, color_weight, allowed=filters.mask, style=scores, focus_boost=_boost(focus))
     return ColorResults(color=_hex(hex), query=style, color_weight=color_weight, results=_results(catalog, hits))
 
 

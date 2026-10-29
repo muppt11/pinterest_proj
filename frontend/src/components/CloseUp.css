@@ -1,5 +1,6 @@
 .mb-closeup-layout {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: 24px;
 }
 
@@ -12,6 +13,8 @@
 
 .mb-closeup {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  min-width: 0;
   overflow: hidden;
   border: 1px solid var(--mb-border);
   border-radius: var(--mb-radius-panel);
@@ -58,6 +61,7 @@
   flex-direction: column;
   gap: 16px;
   padding: 24px 28px;
+  min-width: 0;
 }
 
 .mb-closeup-actions {
@@ -68,6 +72,10 @@
 }
 
 .mb-closeup-board {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
   max-width: 60%;
   overflow: hidden;
   padding: 12px 8px;
@@ -80,6 +88,15 @@
   white-space: nowrap;
   cursor: pointer;
 }
+
+.mb-closeup-board-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.mb-closeup-board > span:last-child,
+.mb-closeup-save { flex-shrink: 0; }
 
 .mb-closeup-board:hover {
   background: var(--mb-surface-muted);
@@ -114,6 +131,7 @@
 
 .mb-closeup-facts div {
   display: flex;
+  flex-wrap: wrap;
   justify-content: space-between;
   gap: 12px;
   padding: 12px 16px;
@@ -126,12 +144,16 @@
 }
 
 .mb-closeup-facts dd {
+  min-width: 0;
+  max-width: 100%;
+  overflow-wrap: anywhere;
   margin: 0;
   font-weight: 600;
 }
 
 .mb-swatches {
   display: flex;
+  flex-wrap: wrap;
   gap: 6px;
 }
 
@@ -236,3 +258,5 @@
   margin: 0 0 12px;
   font-size: 1.15rem;
 }
+
+.mb-closeup-more { min-width: 0; }

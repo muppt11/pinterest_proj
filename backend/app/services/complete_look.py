@@ -48,9 +48,13 @@ def blended_query(item_vec: np.ndarray, centroid: np.ndarray | None, item_weight
     """item_weight * item + (1 - item_weight) * board centroid, re-normalized."""
     if centroid is None:
         return item_vec
-    c = centroid / np.linalg.norm(centroid)
+    norm = np.linalg.norm(centroid)
+    if centroid.shape != item_vec.shape or not np.isfinite(centroid).all() or not np.isfinite(norm) or norm == 0:
+        raise ValueError("Board centroid must be a finite, non-zero vector matching the catalog dimension.")
+    c = centroid / norm
     q = item_weight * item_vec + (1 - item_weight) * c
-    return (q / np.linalg.norm(q)).astype(np.float32)
+    length = np.linalg.norm(q)
+    return item_vec if length < 1e-6 else (q / length).astype(np.float32)
 
 
 def complete_look(
@@ -60,6 +64,7 @@ def complete_look(
     centroid: np.ndarray | None = None,
     item_weight: float = DEFAULT_ITEM_WEIGHT,
     exclude_ids: set[str] | None = None,
+    bias: np.ndarray | None = None,
 ) -> tuple[str | None, list[LookGroup]]:
     """Return the anchor's group and, for each complementary group, the best-matching items.
 
@@ -73,7 +78,8 @@ def complete_look(
     if group is None:
         return None, []
     query = blended_query(catalog.vector(item_id), centroid, item_weight)
+    excluded = catalog.reposts.group_members(item_id) | (exclude_ids or set())
     return group, [
-        LookGroup(g, catalog.search(query, k=per_group, categories=GROUPS[g], kids=item["kids"], exclude_ids={item_id} | (exclude_ids or set())))
+        LookGroup(g, catalog.search(query, k=per_group, categories=GROUPS[g], kids=item["kids"], exclude_ids=excluded, bias=bias))
         for g in COMPLEMENTS[group]
     ]

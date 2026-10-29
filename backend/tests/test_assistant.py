@@ -237,3 +237,79 @@ def test_search_tool_kids_filter(catalog: Catalog, ledger: TurnLedger) -> None:
     assert [r["id"] for r in out["results"]] == ["shoes-boot"]
     adults = call(build_tools(catalog, FakeEmbedder(), TurnLedger()), "search_similar", query="boot", kids=False)
     assert "shoes-boot" not in [r["id"] for r in adults["results"]]
+
+
+U1, U2, U3 = (f"{c * 8}-aaaa-bbbb-cccc-{c * 12}" for c in "123")
+
+
+def test_validator_handles_improvised_citation_formats() -> None:
+    """Regression: the model wrote '[Outwear:<id>]' and raw IDs leaked into the answer."""
+    text = (
+        "Here are some black leather jackets from the catalog:\n\n"
+        f"1. [Outwear:{U1}]\n2. [Blazer: {U2}]\n3. [{U3}]\n"
+        f"The first one, ({U1}), is the most classic. Also {U3} works."
+    )
+    result = validate_answer(text, allowed_ids={U1, U2})
+    assert result.item_ids == [U1, U2] and result.removed_ids == [U3]
+    assert "Outwear:" not in result.text and "Blazer:" not in result.text
+    assert U3 not in result.text
+    assert "1." not in result.text and "2." not in result.text  # ID-only list lines are gone
+    assert result.text.startswith("Here are some black leather jackets")
+    assert f"[item:{U1}]" in result.text  # inline mention kept, normalized
+
+
+def test_validator_leaves_ordinary_brackets_alone() -> None:
+    result = validate_answer("Pair it with loafers (optional) [see below].", allowed_ids=set())
+    assert result.text == "Pair it with loafers (optional) [see below]." and result.item_ids == []
+
+
+@pytest.mark.parametrize("citation", ["[item:a]", "(item:a)", "[Outwear:a]", "[a]"])
+def test_validator_handles_short_ids(citation: str) -> None:
+    result = validate_answer(f"Try {citation}.", allowed_ids={"a"})
+    assert result.text == "Try [item:a]."
+    assert result.item_ids == ["a"] and result.removed_ids == []
+
+
+def test_chat_replaces_improvised_id_list_with_cards(chat) -> None:  # type: ignore[no-untyped-def]
+    client = chat([
+        tool_call("search_similar", {"query": "red shirt", "k": 2}),
+        AIMessage(content="Here are some red tops:\n1. [T-shirt:tshirt-red]\n2. (item:tshirt-pink)\n3. [item:x]"),
+    ])
+    done = events(client.post("/assistant/chat", json={"message": "red tops?"}))[-1][1]
+    assert done["text"] == "Here are some red tops:"
+    assert [i["id"] for i in done["items"]] == ["tshirt-red", "tshirt-pink"]
+    assert done["removed_ids"] == ["x"]
+
+
+def test_assistant_tools_respect_focus_exclusions(catalog: Catalog, ledger: TurnLedger) -> None:
+    tools = build_tools(catalog, FakeEmbedder(), ledger, exclude_ids={"tshirt-red"})
+    result = call(tools, "search_similar", query="red shirt", category="T-Shirt", k=2)
+    assert [i["id"] for i in result["results"]] == ["tshirt-pink"]
+    assert "tshirt-red" not in ledger.item_ids
+
+
+def test_complete_look_uses_closest_board_aesthetic(catalog: Catalog, ledger: TurnLedger) -> None:
+    board = BoardSummary([
+        {"label": "Unrelated", "style_tags": [], "centroid": [0, 0, 1, 0]},
+        {"label": "Matching", "style_tags": [], "centroid": [1, 0, 0, 0]},
+    ])
+    result = call(build_tools(catalog, FakeEmbedder(), ledger, board), "complete_look", item_id="tshirt-red")
+    assert result["used_board"] is True
+    # The matching aesthetic leaves the anchor's query unchanged, so orthogonal pants score zero.
+    assert result["groups"]["bottoms"][0]["similarity"] == 0.0
+
+
+@pytest.mark.parametrize("centroid", [[0, 0], [0, 0, 0, 0]])
+def test_chat_rejects_invalid_board_vectors(chat, centroid: list[float]) -> None:  # type: ignore[no-untyped-def]
+    client = chat([AIMessage(content="ok")])
+    response = client.post("/assistant/chat", json={
+        "message": "help with my board",
+        "board": [{"label": "A", "style_tags": [], "centroid": centroid}],
+    })
+    assert response.status_code == 422
+
+
+def test_validator_preserves_order_across_mixed_citations() -> None:
+    result = validate_answer(f"Try {U1}, then [item:{U2}], then [Outwear:{U1}].", allowed_ids={U1, U2})
+    assert result.item_ids == [U1, U2]
+    assert result.text == f"Try [item:{U1}], then [item:{U2}], then [item:{U1}]."

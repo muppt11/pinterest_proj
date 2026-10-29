@@ -1,6 +1,7 @@
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { ItemGrid } from "../components/ItemGrid";
 import { SavesProvider } from "../saves";
+import { SaveMenu } from "../components/SaveMenu";
 
 const item = { id: "a", category: "Dress", image_url: "/images/a.jpg", kids: false, width: 4, height: 5 };
 
@@ -35,6 +36,7 @@ function fakeApi() {
 
 beforeEach(() => localStorage.clear());
 afterEach(() => {
+  vi.restoreAllMocks();
   vi.unstubAllGlobals();
   vi.useRealTimers();
 });
@@ -48,6 +50,25 @@ function renderGrid() {
 }
 
 describe("saving", () => {
+  it("fits the whole save menu above a low anchor and adjusts to a shorter viewport", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => new Response("[]")));
+    const anchor = document.createElement("button");
+    document.body.append(anchor);
+    vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(function (this: HTMLElement) {
+      return this === anchor ? new DOMRect(950, 700, 30, 40) : new DOMRect(0, 0, 320, 400);
+    });
+    await act(async () => {
+      render(<SaveMenu item={item} anchor={anchor} boards={[]} onCreateBoard={vi.fn()} onApply={vi.fn()} onClose={vi.fn()} />);
+    });
+    const menu = screen.getByRole("dialog", { name: "Save to boards" });
+    expect(menu.parentElement).toBe(document.body);
+    expect(menu).toHaveStyle({ top: "292px", left: "688px" });
+    vi.stubGlobal("innerHeight", 320);
+    fireEvent.resize(window);
+    expect(menu).toHaveStyle({ top: "16px", maxHeight: "288px" });
+    anchor.remove();
+  });
+
   it("saves to several boards (including a sub-board) from the checklist, then undoes", async () => {
     const api = fakeApi();
     renderGrid();

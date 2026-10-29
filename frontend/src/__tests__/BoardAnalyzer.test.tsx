@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen } from "@testing-library/react";
 import { BoardAnalyzer } from "../components/BoardAnalyzer";
 
 const photo = (name: string, type = "image/jpeg") => new File(["x"], name, { type });
@@ -57,5 +57,19 @@ describe("BoardAnalyzer", () => {
     choose([photo("a.jpg"), photo("b.jpg"), photo("c.jpg")]);
     fireEvent.click(screen.getByRole("button", { name: "Remove b.jpg" }));
     expect(screen.getByRole("list", { name: "Your board" }).children).toHaveLength(2);
+  });
+
+  it("discards an analysis when the photo selection changes during the request", async () => {
+    let finish!: (response: Response) => void;
+    vi.stubGlobal("fetch", vi.fn(() => new Promise<Response>((resolve) => { finish = resolve; })));
+    const onAnalyzed = vi.fn();
+    render(<BoardAnalyzer onOpen={() => {}} onAnalyzed={onAnalyzed} />);
+    choose([photo("a.jpg"), photo("b.jpg"), photo("c.jpg")]);
+    fireEvent.click(screen.getByRole("button", { name: "Analyze board" }));
+    fireEvent.click(screen.getByRole("button", { name: "Remove c.jpg" }));
+    await act(async () => { finish(new Response(JSON.stringify({ k: 1, aesthetics: [] }))); });
+    expect(screen.queryByRole("region", { name: "Board analysis" })).not.toBeInTheDocument();
+    expect(onAnalyzed).toHaveBeenLastCalledWith(null);
+    expect(screen.getByRole("button", { name: "Analyze board" })).toBeDisabled();
   });
 });

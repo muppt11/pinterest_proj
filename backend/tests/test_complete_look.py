@@ -7,7 +7,7 @@ from fastapi.testclient import TestClient
 from app.deps import get_catalog
 from app.main import app
 from app.services.catalog import Catalog
-from app.services.complete_look import COMPLEMENTS, GROUPS, complete_look, group_of
+from app.services.complete_look import COMPLEMENTS, GROUPS, blended_query, complete_look, group_of
 
 
 def unit(*v: float) -> np.ndarray:
@@ -91,4 +91,19 @@ def test_endpoint_validation(look_client: TestClient) -> None:
     assert look_client.post("/complete-look", json={"item_id": "nope"}).status_code == 404
     assert look_client.post("/complete-look", json={"item_id": "top", "centroid": [1, 0]}).status_code == 422
     assert look_client.post("/complete-look", json={"item_id": "top", "centroid": [0, 0, 0, 0]}).status_code == 422
+    assert look_client.post("/complete-look", json={"item_id": "top", "centroid": [1e30, 0, 0, 0]}).status_code == 422
     assert look_client.post("/complete-look", json={"item_id": "top", "item_weight": 2}).status_code == 422
+
+
+def test_opposite_board_does_not_produce_nan_suggestions(look_catalog: Catalog) -> None:
+    anchor = look_catalog.vector("top")
+    np.testing.assert_allclose(blended_query(anchor, -anchor, 0.5), anchor)
+    _, groups = complete_look(look_catalog, "top", centroid=-anchor, item_weight=0.5)
+    assert all(np.isfinite(h.score) for g in groups for h in g.hits)
+
+
+def test_complete_look_applies_style_focus_bias(look_catalog: Catalog) -> None:
+    bias = np.zeros(len(ROWS))
+    bias[2] = 1.0
+    _, groups = complete_look(look_catalog, "top", bias=bias)
+    assert groups[0].hits[0].item["id"] == "pants-board"

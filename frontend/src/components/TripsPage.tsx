@@ -67,9 +67,13 @@ function NewTripForm({ onCreated }: { onCreated: (id: number) => void }) {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (place || query.trim().length < 2) return setPlaces([]);
-    const t = window.setTimeout(() => tripsApi.geocode(query.trim()).then(setPlaces).catch(() => setPlaces([])), 300);
-    return () => window.clearTimeout(t);
+    setPlaces([]);
+    if (place || query.trim().length < 2) return;
+    let cancelled = false;
+    const t = window.setTimeout(() => tripsApi.geocode(query.trim())
+      .then((results) => !cancelled && setPlaces(results))
+      .catch(() => !cancelled && setPlaces([])), 300);
+    return () => { cancelled = true; window.clearTimeout(t); };
   }, [query, place]);
 
   async function submit(e: FormEvent) {

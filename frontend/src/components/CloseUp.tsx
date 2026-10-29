@@ -24,19 +24,21 @@ export function CloseUp({ itemId, board, onBack, onOpen }: CloseUpProps) {
   const [item, setItem] = useState<Item | null>(null);
   const [similar, setSimilar] = useState<ScoredItem[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [sameCategory, setSameCategory] = useState(true);
+  const [similarLoading, setSimilarLoading] = useState(true);
+  const [similarError, setSimilarError] = useState<string | null>(null);
   const backButton = useRef<HTMLButtonElement>(null);
   const saves = useContext(SavesContextOptional);
 
   useEffect(() => {
     let cancelled = false;
     setItem(null);
-    setSimilar([]);
     setError(null);
-    Promise.all([api.getItem(itemId), api.similar(itemId)])
-      .then(([it, sim]) => {
+    setSameCategory(true);
+    api.getItem(itemId)
+      .then((it) => {
         if (cancelled) return;
         setItem(it);
-        setSimilar(sim.results);
         backButton.current?.focus();
       })
       .catch((e: Error) => !cancelled && setError(e.message));
@@ -44,6 +46,18 @@ export function CloseUp({ itemId, board, onBack, onOpen }: CloseUpProps) {
       cancelled = true;
     };
   }, [itemId]);
+
+  useEffect(() => {
+    let cancelled = false;
+    setSimilar([]);
+    setSimilarLoading(true);
+    setSimilarError(null);
+    api.similar(itemId, 30, sameCategory).then((r) => {
+      if (!cancelled) setSimilar(r.results);
+    }).catch((e: Error) => !cancelled && setSimilarError(e.message))
+      .finally(() => !cancelled && setSimilarLoading(false));
+    return () => { cancelled = true; };
+  }, [itemId, sameCategory]);
 
   if (error) return <p role="alert">Couldn't load this item: {error}</p>;
   if (!item) return <p aria-live="polite">Loading…</p>;
@@ -69,7 +83,8 @@ export function CloseUp({ itemId, board, onBack, onOpen }: CloseUpProps) {
                   aria-label="Choose boards"
                   onClick={(e) => saves.openPicker(item, e.currentTarget)}
                 >
-                  {saves.lastBoard?.name ?? "Select board"} <span aria-hidden="true">⌄</span>
+                  <span className="mb-closeup-board-name">{saves.lastBoard?.name ?? "Select board"}</span>
+                  <span aria-hidden="true">⌄</span>
                 </button>
                 <button type="button" className="mb-closeup-save" onClick={(e) => saves.quickSave(item, e.currentTarget)}>
                   Save
@@ -118,8 +133,12 @@ export function CloseUp({ itemId, board, onBack, onOpen }: CloseUpProps) {
         <FeatureTip tipId="more-like-this">
           <h2 id="more-like-this">More like this</h2>
         </FeatureTip>
-        {similar.length === 0 ? (
-          <p>No similar items found.</p>
+        <div className="mb-filter-chips" role="radiogroup" aria-label="Similar item scope">
+          <button type="button" role="radio" aria-checked={sameCategory} onClick={() => setSameCategory(true)}>Same category</button>
+          <button type="button" role="radio" aria-checked={!sameCategory} onClick={() => setSameCategory(false)}>Similar styles</button>
+        </div>
+        {similarError ? <p role="alert">Couldn't load similar items: {similarError}</p> : similarLoading ? <p role="status">Finding similar items…</p> : similar.length === 0 ? (
+          <p>{sameCategory ? "No more items in this category. Try Similar styles to explore other garments." : "No similar items found."}</p>
         ) : (
           <ItemGrid items={similar} label="More like this" onOpen={onOpen} columnsFor={sideColumns} />
         )}

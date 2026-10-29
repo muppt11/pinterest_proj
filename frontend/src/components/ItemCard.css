@@ -48,6 +48,8 @@
 
 .mb-card-board {
   display: flex;
+  flex: 1;
+  min-width: 0;
   gap: 4px;
   max-width: 55%;
   padding: 8px 4px;
@@ -63,6 +65,7 @@
 }
 
 .mb-card-save {
+  flex-shrink: 0;
   padding: 10px 16px;
   border: 0;
   border-radius: var(--mb-radius-pill);

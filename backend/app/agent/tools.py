@@ -49,6 +49,8 @@ def build_tools(
     ledger: TurnLedger,
     board: BoardSummary | None = None,
     describe_image: Callable[[dict[str, Any]], str | None] | None = None,
+    exclude_ids: set[str] | None = None,
+    bias: np.ndarray | None = None,
 ) -> list[BaseTool]:
     """Tools bound to this request's catalog, model, board, and ledger."""
 
@@ -66,7 +68,7 @@ def build_tools(
         if category is not None and category not in catalog.categories:
             ledger.tools_used.append("search_similar")
             return json.dumps({"error": f"unknown category; choose from {catalog.categories}"})
-        result = text_search(catalog, embedder, query, k, category=category, kids=kids)
+        result = text_search(catalog, embedder, query, k, category=category, kids=kids, exclude_ids=exclude_ids, bias=bias)
         if result.low_relevance or not result.hits:
             ledger.tools_used.append("search_similar")
             return json.dumps({"results": [], "note": "no good matches; the catalog is clothing only"})
@@ -76,13 +78,15 @@ def build_tools(
     @tool
     def complete_look(item_id: str, per_group: int = 3) -> str:
         """Suggest complementary pieces (bottoms, shoes, outerwear, hats, ...) for one catalog item.
-        Uses the board's main aesthetic as a taste signal when a board has been analyzed."""
+        Uses the board aesthetic closest to this item as a taste signal when a board has been analyzed."""
         per_group = max(1, min(per_group, 6))
         centroid = None
-        if board and board.aesthetics:
-            centroid = np.asarray(board.aesthetics[0]["centroid"], dtype=np.float32)
         try:
-            group, groups = complete_look_service(catalog, item_id, per_group, centroid)
+            anchor = catalog.vector(item_id)
+            if board and board.aesthetics:
+                centroids = [np.asarray(a["centroid"], dtype=np.float32) for a in board.aesthetics]
+                centroid = max(centroids, key=lambda c: float(anchor @ (c / np.linalg.norm(c))))
+            group, groups = complete_look_service(catalog, item_id, per_group, centroid, exclude_ids=exclude_ids, bias=bias)
         except KeyError:
             ledger.tools_used.append("complete_look")
             return json.dumps({"error": f"no catalog item with id {item_id}"})
@@ -133,7 +137,7 @@ def build_tools(
         out = []
         found: list[dict[str, Any]] = []
         for a in board.aesthetics:
-            hits = catalog.search(np.asarray(a["centroid"], dtype=np.float32), k=3)
+            hits = catalog.search(np.asarray(a["centroid"], dtype=np.float32), k=3, exclude_ids=exclude_ids, bias=bias)
             found.extend(h.item for h in hits)
             out.append({"label": a["label"], "style_words": a["style_tags"], "closest_items": [_brief(h.item, h.score) for h in hits]})
         record("describe_board", found)

@@ -1,6 +1,12 @@
 .mb-mood {
+  width: 100%;
+  min-width: 0;
   max-width: 1400px;
   margin: 0 auto;
+}
+
+.mb-mood > .mb-filterbar {
+  margin: 24px 0 16px;
 }
 
 .mb-mood-controls {
@@ -15,6 +21,9 @@
 
 .mb-mood-wheel-wrap {
   display: flex;
+  flex: 0 1 240px;
+  min-width: 0;
+  max-width: 100%;
   flex-direction: column;
   align-items: center;
   gap: 12px;
@@ -22,6 +31,9 @@
 
 .mb-mood-wheel {
   position: relative;
+  width: 100%;
+  max-width: 240px;
+  aspect-ratio: 1;
   border-radius: 50%;
   background:
     radial-gradient(circle closest-side, #9a9a9a, transparent),
@@ -67,8 +79,8 @@
 }
 
 .mb-mood-styles {
-  flex: 1;
-  min-width: 260px;
+  flex: 1 1 260px;
+  min-width: 0;
   max-width: 560px;
 }
 
@@ -109,6 +121,7 @@
 
 .mb-mood-weight input {
   flex: 1;
+  min-width: 0;
   accent-color: var(--mb-primary);
 }
 
@@ -119,4 +132,14 @@
   margin: 24px 0 12px;
   color: var(--mb-ink-muted);
   text-transform: none;
+}
+
+.mb-mood-summary-text {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.mb-mood-results {
+  min-width: 0;
+  max-width: 100%;
 }

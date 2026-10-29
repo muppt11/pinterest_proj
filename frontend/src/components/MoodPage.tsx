@@ -4,6 +4,9 @@ import { FeatureTip } from "./FeatureTip";
 import { ItemGrid } from "./ItemGrid";
 import { PageTitle } from "./PageTitle";
 import "./MoodPage.css";
+import { DEFAULT_FILTERS, type CatalogFilters } from "../categories";
+import { useFocus } from "../focus";
+import { FilterBar } from "./FilterBar";
 
 /** HSL (h 0-360, s/l 0-100) -> #rrggbb */
 export function hslToHex(h: number, s: number, l: number): string {
@@ -27,8 +30,6 @@ export function wheelPoint(x: number, y: number, size: number): { h: number; s: 
   return { h: Math.round(h), s: Math.round(r * 100) };
 }
 
-const WHEEL = 240;
-
 /** Mood picker: a color wheel + an aesthetic chip -> curated items that match both. */
 export function MoodPage({ onOpen }: { onOpen: (item: Item) => void }) {
   const [hue, setHue] = useState(95);
@@ -39,6 +40,9 @@ export function MoodPage({ onOpen }: { onOpen: (item: Item) => void }) {
   const [weight, setWeight] = useState(0.5);
   const [results, setResults] = useState<ColorMatchItem[] | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [filters, setFilters] = useState<CatalogFilters>({ ...DEFAULT_FILTERS });
+  const focus = useFocus();
   const dragging = useRef(false);
   const hex = hslToHex(hue, sat, light);
 
@@ -48,17 +52,23 @@ export function MoodPage({ onOpen }: { onOpen: (item: Item) => void }) {
 
   useEffect(() => {
     if (!style) return;
+    let cancelled = false;
+    setLoading(true);
+    setResults(null);
+    setError(null);
     const t = window.setTimeout(() => {
       api
-        .mood(hex, style, weight)
+        .mood(hex, style, weight, 40, filters)
         .then((r) => {
+          if (cancelled) return;
           setResults(r.results);
           setError(null);
         })
-        .catch((e: Error) => setError(e.message));
+        .catch((e: Error) => !cancelled && setError(e.message))
+        .finally(() => !cancelled && setLoading(false));
     }, 250);
-    return () => window.clearTimeout(t);
-  }, [hex, style, weight]);
+    return () => { cancelled = true; window.clearTimeout(t); };
+  }, [hex, style, weight, filters, focus]);
 
   function pick(e: PointerEvent<HTMLDivElement>) {
     const rect = e.currentTarget.getBoundingClientRect();
@@ -78,7 +88,7 @@ export function MoodPage({ onOpen }: { onOpen: (item: Item) => void }) {
   }
 
   const angle = ((hue - 90) * Math.PI) / 180;
-  const dot = { left: WHEEL / 2 + Math.cos(angle) * (sat / 100) * (WHEEL / 2), top: WHEEL / 2 + Math.sin(angle) * (sat / 100) * (WHEEL / 2) };
+  const dot = { left: `${50 + Math.cos(angle) * sat / 2}%`, top: `${50 + Math.sin(angle) * sat / 2}%` };
 
   return (
     <div className="mb-mood">
@@ -95,7 +105,7 @@ export function MoodPage({ onOpen }: { onOpen: (item: Item) => void }) {
               aria-valuenow={hue}
               aria-valuemin={0}
               aria-valuemax={360}
-              style={{ width: WHEEL, height: WHEEL, filter: `brightness(${0.4 + light / 100})` }}
+              style={{ filter: `brightness(${0.4 + light / 100})` }}
               onPointerDown={(e) => {
                 dragging.current = true;
                 e.currentTarget.setPointerCapture(e.pointerId);
@@ -103,6 +113,7 @@ export function MoodPage({ onOpen }: { onOpen: (item: Item) => void }) {
               }}
               onPointerMove={(e) => dragging.current && pick(e)}
               onPointerUp={() => (dragging.current = false)}
+              onPointerCancel={() => (dragging.current = false)}
               onKeyDown={keys}
             >
               <span className="mb-mood-dot" style={{ ...dot, background: hex }} aria-hidden="true" />
@@ -133,9 +144,9 @@ export function MoodPage({ onOpen }: { onOpen: (item: Item) => void }) {
                 min={0}
                 max={1}
                 step={0.1}
-                value={weight}
+                value={1 - weight}
                 aria-label="Balance between color and style"
-                onChange={(e) => setWeight(Number(e.target.value))}
+                onChange={(e) => setWeight(1 - Number(e.target.value))}
               />
               <span>Style</span>
             </label>
@@ -143,13 +154,17 @@ export function MoodPage({ onOpen }: { onOpen: (item: Item) => void }) {
         </div>
       </FeatureTip>
 
+      <FilterBar value={filters} onChange={setFilters} showStyle={false} />
+
       {error && <p role="alert" className="mb-notice">{error}</p>}
       {!style && <p className="mb-notice">Pick a color on the wheel, then an aesthetic, to see your curated items.</p>}
+      {loading && <p role="status" className="mb-notice">Finding items for these choices…</p>}
+      {!loading && results?.length === 0 && <p className="mb-notice">No matches for this combination. Try a broader category or palette.</p>}
       {style && results && (
-        <section aria-label="Curated items">
+        <section className="mb-mood-results" aria-label="Curated items">
           <p className="mb-mood-summary">
-            <span className="mb-color-dot" style={{ background: hex }} aria-hidden="true" /> {style} · {results.length} items ranked by
-            color match (Delta E 2000) and style match
+            <span className="mb-color-dot" style={{ background: hex }} aria-hidden="true" />
+            <span className="mb-mood-summary-text">{style} · {results.length} items ranked by color match (Delta E 2000) and style match</span>
           </p>
           <ItemGrid items={results} label={`${style} in ${hex}`} onOpen={onOpen} />
         </section>

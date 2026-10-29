@@ -1,6 +1,7 @@
 """Validation for user-uploaded images (type, size, and decompression-bomb limits)."""
 
 import io
+import warnings
 
 from fastapi import HTTPException, UploadFile
 from PIL import Image
@@ -24,8 +25,15 @@ async def read_image(upload: UploadFile) -> tuple[bytes, Image.Image]:
     if len(data) > MAX_BYTES:
         raise HTTPException(status_code=413, detail="Images must be 10 MB or smaller.")
     try:
-        image = Image.open(io.BytesIO(data))
+        with warnings.catch_warnings():
+            warnings.simplefilter("error", Image.DecompressionBombWarning)
+            image = Image.open(io.BytesIO(data))
+        if image.width * image.height > MAX_PIXELS:
+            image.close()
+            raise HTTPException(status_code=413, detail="Images must be 40 megapixels or smaller.")
         image.load()
-    except (Image.DecompressionBombError, OSError, SyntaxError) as exc:
+    except (Image.DecompressionBombError, Image.DecompressionBombWarning) as exc:
+        raise HTTPException(status_code=413, detail="Images must be 40 megapixels or smaller.") from exc
+    except (OSError, SyntaxError) as exc:
         raise HTTPException(status_code=400, detail="That file isn't a readable image.") from exc
     return data, image

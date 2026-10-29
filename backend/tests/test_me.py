@@ -94,3 +94,26 @@ def test_sign_out_clears_cookie(client: TestClient) -> None:
     client.post("/me", json={"display_name": "A"})
     response = client.delete("/me")
     assert response.status_code == 204 and 'mb_session=""' in response.headers["set-cookie"]
+
+
+def test_all_styles_overrides_saved_quiz_focus(client: TestClient, colored_catalog: Catalog) -> None:
+    from app.services.style_focus import FocusIndex
+
+    from .test_style_focus import GenderEmbedder
+
+    colored_catalog._focus_index = FocusIndex(colored_catalog, GenderEmbedder())
+    client.post("/me", json={"display_name": "A"})
+    client.put("/me/prefs", json={"aesthetics": ["minimalist"], "focus": "women"})
+    saved_focus = client.get("/for-you").json()
+    assert "pants-jeans" not in {i["id"] for i in saved_focus["items"]}
+    all_styles = client.get("/for-you?focus=all").json()
+    assert "pants-jeans" in {i["id"] for i in all_styles["items"]}
+
+
+def test_personalized_feed_accepts_narrow_filters_and_kids(client: TestClient) -> None:
+    client.post("/me", json={"display_name": "A"})
+    client.put("/me/prefs", json={"colors": ["pastels"]})
+    body = client.get("/for-you", params={"group": "tops", "category": "T-Shirt", "audience": "adults", "color_family": "pastels"}).json()
+    assert [i["id"] for i in body["items"]] == ["tshirt-pink"]
+    kids = client.get("/for-you", params={"audience": "kids", "category": "Shoes"}).json()
+    assert [i["id"] for i in kids["items"]] == ["shoes-boot"]

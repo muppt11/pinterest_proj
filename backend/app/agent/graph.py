@@ -31,7 +31,9 @@ outfits from this catalog. Don't call tools for it.
 - For any clothing request, call search_similar (or complete_look / compare_items) before answering.
   The catalog includes kids' clothing: pass kids=true when the user asks for kids' items.
 - Search once or twice at most, then answer with what you found. Cite 3-6 items.
-- Keep answers short: a sentence or two of reasoning, then the cited items.
+- Keep answers short: a sentence or two with inline [item:ID] citations where useful.
+- The app displays cited products as picture cards. Never list or number products in the answer,
+  write citation-only lines, or use category labels or bare IDs as citations.
 {context}"""
 
 

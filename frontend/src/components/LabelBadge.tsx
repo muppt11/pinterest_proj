@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import type { ProvenanceLabel } from "../api/client";
+import { usePopoverPosition } from "../usePopoverPosition";
 import "./LabelBadge.css";
 
 const TEXT: Record<ProvenanceLabel["label"], string> = {
@@ -15,11 +17,13 @@ const TEXT: Record<ProvenanceLabel["label"], string> = {
 export function LabelBadge({ provenance, compact = false }: { provenance: ProvenanceLabel; compact?: boolean }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLSpanElement>(null);
+  const panel = useRef<HTMLSpanElement>(null);
+  const position = usePopoverPosition(open, ref, panel, { side: "top" });
 
   useEffect(() => {
     if (!open) return;
     const close = (e: MouseEvent | KeyboardEvent) => {
-      if (e instanceof KeyboardEvent ? e.key === "Escape" : !ref.current?.contains(e.target as Node)) setOpen(false);
+      if (e instanceof KeyboardEvent ? e.key === "Escape" : !ref.current?.contains(e.target as Node) && !panel.current?.contains(e.target as Node)) setOpen(false);
     };
     window.addEventListener("mousedown", close);
     window.addEventListener("keydown", close);
@@ -44,8 +48,8 @@ export function LabelBadge({ provenance, compact = false }: { provenance: Proven
       >
         {quiet ? "ⓘ" : TEXT[provenance.label]}
       </button>
-      {open && (
-        <span className="mb-label-pop" role="dialog" aria-modal="false" aria-label="Why this label">
+      {open && createPortal(
+        <span ref={panel} style={position} className="mb-label-pop" role="dialog" aria-modal="false" aria-label="Why this label" onClick={(e) => e.stopPropagation()}>
           <strong>{TEXT[provenance.label]}</strong>
           <span>{provenance.explanation}</span>
           {provenance.evidence.length > 0 && (
@@ -58,7 +62,8 @@ export function LabelBadge({ provenance, compact = false }: { provenance: Proven
               ))}
             </span>
           )}
-        </span>
+        </span>,
+        document.body,
       )}
     </span>
   );

@@ -13,19 +13,15 @@
 }
 
 .mb-tip {
-  position: absolute;
-  top: calc(100% + 10px);
-  z-index: 20;
-  width: min(320px, calc(100vw - 2 * var(--mb-gutter)));
+  position: fixed;
+  z-index: 45;
+  width: min(320px, calc(100vw - 24px));
+  max-height: calc(100vh - 24px);
+  max-height: calc(100dvh - 24px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
   padding: 14px 16px;
-}
-
-.mb-tip-start {
-  left: 0;
-}
-
-.mb-tip-end {
-  right: 0;
+  overflow-wrap: anywhere;
 }
 
 .mb-tip p,

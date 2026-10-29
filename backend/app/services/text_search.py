@@ -31,11 +31,15 @@ def rerank_by_color(catalog: Catalog, hits: list[Hit], parsed: ParsedQuery) -> l
     rows = [catalog._row_by_id[h.item["id"]] for h in hits]
     text = np.array([h.score for h in hits])
     text = (text - text.min()) / max(float(text.max() - text.min()), 1e-6)
+    color_parts = []
     if parsed.color:
         de, _ = color_index(catalog).distances(rgb_to_lab(np.array(COLOR_NAMES[parsed.color])))
-        color = np.clip(1 - de[rows] / 40.0, 0, 1)
-    else:
-        color = items_in_families([catalog.items[r] for r in rows], [parsed.family]).astype(float)  # type: ignore[list-item]
+        color_parts.append(np.clip(1 - de[rows] / 40.0, 0, 1))
+    if parsed.family:
+        color_parts.append(items_in_families([catalog.items[r] for r in rows], [parsed.family]).astype(float))
+    if not color_parts:
+        return hits
+    color = np.mean(color_parts, axis=0)
     combined = 0.5 * text + 0.5 * color
     return [hits[i] for i in np.argsort(-combined, kind="stable")]
 
@@ -54,6 +58,8 @@ def text_search(
 ) -> TextSearchResult:
     vector = embedder.embed_texts([query])[0]
     parsed = parse_query(query)
+    if kids is None:
+        kids = parsed.kids
 
     window = catalog.search(vector, k=RELEVANCE_WINDOW, category=category, exclude_ids=exclude_ids)
     relevance = sum(h.score for h in window) / len(window) if window else 0.0
@@ -61,13 +67,13 @@ def text_search(
     low_relevance = relevance < MIN_TEXT_RELEVANCE and parsed.categories is None
 
     categories = parsed.categories if category is None else None
-    if group_categories:  # an explicit garment-type filter, narrowed further by garment words when they overlap
+    if group_categories is not None:  # explicit filters take priority over inferred garment words
         categories = (group_categories & categories) or group_categories if categories else group_categories
-    pool = catalog.search(vector, k=max(k * 4, 200), category=category, categories=categories, exclude_ids=exclude_ids, bias=bias, kids=kids)
-    if not pool:  # the garment word matched no category here; fall back to text only
-        pool = catalog.search(vector, k=max(k * 4, 200), category=category, exclude_ids=exclude_ids, kids=kids)
-        categories = None
+    pool_size = catalog.index.ntotal if parsed.color or parsed.family else max(k * 4, 200)
+    pool = catalog.search(vector, k=pool_size, category=category, categories=categories, exclude_ids=exclude_ids, bias=bias, kids=kids)
     if parsed.color or parsed.family:
         pool = rerank_by_color(catalog, pool, parsed)
     understood = (sorted(categories) if categories else []) + [w for w in (parsed.color, parsed.family) if w]
+    if kids is not None:
+        understood.append("Kids" if kids else "Adults")
     return TextSearchResult(pool[:k], low_relevance, understood)

@@ -3,7 +3,7 @@
 from collections.abc import Callable
 from dataclasses import dataclass
 from functools import lru_cache
-from typing import Annotated
+from typing import Annotated, Literal
 
 import numpy as np
 from fastapi import Depends, HTTPException, Query
@@ -12,8 +12,14 @@ from langchain_core.language_models import BaseChatModel
 from app.agent.vision import VisionDescriber
 from app.config import get_settings
 from app.services.catalog import Catalog
+from app.services.color_families import items_in_families
+from app.services.complete_look import GROUPS
 from app.services.embedder import Embedder, ProcessEmbedder
 from app.services.style_focus import Focus, FocusIndex
+
+GarmentGroup = Literal["tops", "bottoms", "one-piece", "outerwear", "shoes", "hats"]
+Audience = Literal["all", "adults", "kids"]
+ColorFamily = Literal["neutrals", "brights", "pastels", "darks", "earth tones"]
 
 
 @lru_cache
@@ -95,3 +101,41 @@ def get_focus(
         index = FocusIndex(catalog, embedder_factory())
         catalog._focus_index = index  # type: ignore[attr-defined]
     return FocusFilter(focus, index.excluded_ids(focus), index.allowed(focus), index.lean)
+
+
+@dataclass
+class CatalogFilters:
+    """One strict eligibility mask shared by browsing and every search mode."""
+
+    category: str | None
+    group: GarmentGroup | None
+    kids: bool | None
+    categories: set[str] | None
+    mask: np.ndarray
+    excluded: set[str]
+
+
+def get_filters(
+    catalog: Annotated[Catalog, Depends(get_catalog)],
+    focus: Annotated[FocusFilter, Depends(get_focus)],
+    category: str | None = None,
+    group: GarmentGroup | None = None,
+    audience: Audience = "all",
+    color_family: ColorFamily | None = None,
+) -> CatalogFilters:
+    if category is not None and category not in catalog.categories:
+        raise HTTPException(status_code=422, detail=f"Unknown category. Choose from: {', '.join(catalog.categories)}")
+    categories = set(GROUPS[group]) if group else None
+    if category is not None:
+        categories = {category} if categories is None else categories & {category}
+    kids = None if audience == "all" else audience == "kids"
+    mask = np.array([
+        (categories is None or item["category"] in categories)
+        and (kids is None or item["kids"] == kids)
+        and item["id"] not in focus.excluded
+        for item in catalog.items
+    ], dtype=bool)
+    if color_family:
+        mask &= items_in_families(catalog.items, [color_family])
+    excluded = {item["id"] for row, item in enumerate(catalog.items) if not mask[row]}
+    return CatalogFilters(category, group, kids, categories, mask, excluded)

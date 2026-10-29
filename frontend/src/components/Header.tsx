@@ -1,4 +1,4 @@
-import { useRef, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import { LOGO_URL } from "../logo";
 import { FeatureTip } from "./FeatureTip";
 import { FocusSelect } from "./FocusPicker";
@@ -33,9 +33,11 @@ export function Header({ onAsk, displayName, path, onNavigate, onSearchText, onS
   const [color, setColor] = useState<string | null>(null);
   const fileInput = useRef<HTMLInputElement>(null);
   const colorTimer = useRef<number | undefined>(undefined);
+  useEffect(() => () => window.clearTimeout(colorTimer.current), []);
 
   function submit(e: FormEvent) {
     e.preventDefault();
+    window.clearTimeout(colorTimer.current);
     if (color) onSearchColor(color, query.trim());
     else if (query.trim()) onSearchText(query.trim());
   }
@@ -48,6 +50,7 @@ export function Header({ onAsk, displayName, path, onNavigate, onSearchText, onS
         aria-label="MoodBoards home"
         onClick={(e) => {
           e.preventDefault();
+          window.clearTimeout(colorTimer.current);
           setQuery("");
           setColor(null);
           onHome();
@@ -67,8 +70,10 @@ export function Header({ onAsk, displayName, path, onNavigate, onSearchText, onS
               aria-current={active ? "page" : undefined}
               onClick={(e) => {
                 e.preventDefault();
+                window.clearTimeout(colorTimer.current);
                 if (to === "/") {
                   setQuery("");
+                  setColor(null);
                   onHome();
                 } else onNavigate(to);
               }}
@@ -93,7 +98,10 @@ export function Header({ onAsk, displayName, path, onNavigate, onSearchText, onS
               type="search"
               placeholder="Search outfits, e.g. sage green linen"
               value={query}
-              onChange={(e) => setQuery(e.target.value)}
+              onChange={(e) => {
+                window.clearTimeout(colorTimer.current);
+                setQuery(e.target.value);
+              }}
             />
             {color && (
               <span className="mb-color-chip">
@@ -103,8 +111,10 @@ export function Header({ onAsk, displayName, path, onNavigate, onSearchText, onS
                   type="button"
                   aria-label="Clear color"
                   onClick={() => {
+                    window.clearTimeout(colorTimer.current);
                     setColor(null);
                     if (query.trim()) onSearchText(query.trim());
+                    else onHome();
                   }}
                 >
                   ×
@@ -157,7 +167,11 @@ export function Header({ onAsk, displayName, path, onNavigate, onSearchText, onS
               data-testid="photo-input"
               onChange={(e) => {
                 const file = e.target.files?.[0];
-                if (file) onSearchImage(file);
+                if (file) {
+                  window.clearTimeout(colorTimer.current);
+                  setColor(null);
+                  onSearchImage(file);
+                }
                 e.target.value = "";
               }}
             />

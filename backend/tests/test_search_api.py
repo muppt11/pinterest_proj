@@ -30,8 +30,14 @@ def test_similar_excludes_the_item_itself(client: TestClient) -> None:
     response = client.get("/items/tshirt-red/similar", params={"k": 2})
     # Pink is nearly parallel to red; boot and jeans are orthogonal (tied), so only check the top hit.
     assert ids(response)[0] == "tshirt-pink"
-    assert "tshirt-red" not in ids(response) and len(ids(response)) == 2
+    assert "tshirt-red" not in ids(response) and len(ids(response)) == 1
     assert client.get("/items/nope/similar").status_code == 404
+
+
+def test_similar_can_broaden_categories_but_keeps_audience(client: TestClient) -> None:
+    response = client.get("/items/tshirt-red/similar", params={"same_category": False})
+    assert set(ids(response)) == {"tshirt-pink", "pants-jeans"}
+    assert all(not item["kids"] for item in response.json()["results"])
 
 
 def test_text_search_ranks_matching_items_first(client: TestClient) -> None:
@@ -88,6 +94,19 @@ def test_image_search_rejects_oversized_upload(client: TestClient) -> None:
     assert client.post("/search/image", files=big).status_code == 413
 
 
+def test_image_search_enforces_the_decoded_pixel_limit(client: TestClient, monkeypatch) -> None:  # type: ignore[no-untyped-def]
+    monkeypatch.setattr("app.uploads.MAX_PIXELS", 100)
+    files = {"image": ("small-file.jpg", image_bytes(size=(11, 10)), "image/jpeg")}
+    response = client.post("/search/image", files=files)
+    assert response.status_code == 413 and "megapixels" in response.json()["detail"]
+
+
+def test_decompression_bomb_warnings_are_rejected(client: TestClient, monkeypatch) -> None:  # type: ignore[no-untyped-def]
+    monkeypatch.setattr("app.uploads.Image.MAX_IMAGE_PIXELS", 100)
+    files = {"image": ("small-file.jpg", image_bytes(size=(11, 10)), "image/jpeg")}
+    assert client.post("/search/image", files=files).status_code == 413
+
+
 def test_missing_index_returns_503() -> None:
     def missing():  # type: ignore[no-untyped-def]
         from fastapi import HTTPException
@@ -120,3 +139,14 @@ def test_aesthetic_ranking_on_browse(client: TestClient) -> None:
     body = client.get("/items", params={"style": "minimalist", "limit": 4}).json()
     assert body["total"] == 4 and len(body["items"]) == 4
     assert client.get("/items", params={"style": "goblincore"}).status_code == 422
+
+
+def test_empty_garment_filter_does_not_return_other_categories(client: TestClient) -> None:
+    body = client.get("/search/text", params={"q": "shirt", "group": "hats"}).json()
+    assert body["results"] == []
+    assert body["understood"] == ["Hat"]
+
+
+def test_category_and_group_filters_are_intersected(client: TestClient) -> None:
+    body = client.get("/search/text", params={"q": "shirt", "group": "shoes", "category": "Pants"}).json()
+    assert body["results"] == []

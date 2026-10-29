@@ -1,5 +1,7 @@
-import { useEffect, useSyncExternalStore, type ReactNode } from "react";
+import { useEffect, useRef, useSyncExternalStore, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 import { dismissTip, getTip, tipStore } from "../featureTips";
+import { usePopoverPosition } from "../usePopoverPosition";
 import "./FeatureTip.css";
 
 interface FeatureTipProps {
@@ -14,10 +16,14 @@ interface FeatureTipProps {
  * Tips queue up so only one shows at a time; Escape or "Got it" dismisses it for good.
  */
 export function FeatureTip({ tipId, children, align = "start" }: FeatureTipProps) {
+  const anchor = useRef<HTMLDivElement>(null);
+  const popup = useRef<HTMLDivElement>(null);
   const tip = getTip(tipId);
   useEffect(() => tipStore.register(tipId), [tipId]);
   useSyncExternalStore(tipStore.subscribe, tipStore.getVersion);
   const open = tipStore.active() === tipId;
+
+  const position = usePopoverPosition(open, anchor, popup, { align, gap: 10 });
 
   useEffect(() => {
     if (!open) return;
@@ -27,17 +33,18 @@ export function FeatureTip({ tipId, children, align = "start" }: FeatureTipProps
   }, [open, tipId]);
 
   return (
-    <div className="mb-tip-anchor">
+    <div className="mb-tip-anchor" ref={anchor}>
       {children}
-      {open && (
-        <div className={`mb-tip mb-tip-${align}`} role="dialog" aria-modal="false" aria-labelledby={`tip-${tipId}`}>
+      {open && createPortal(
+        <div ref={popup} className="mb-tip" style={position} role="dialog" aria-modal="false" aria-labelledby={`tip-${tipId}`}>
           <p className="mb-tip-title" id={`tip-${tipId}`}>{tip.title}</p>
           <p><strong>How:</strong> {tip.how}</p>
           <p><strong>Why:</strong> {tip.why}</p>
           <button type="button" className="mb-tip-ok" onClick={() => dismissTip(tipId)}>
             Got it
           </button>
-        </div>
+        </div>,
+        document.body,
       )}
     </div>
   );

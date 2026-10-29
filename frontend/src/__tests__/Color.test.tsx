@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import App from "../App";
 import { hslToHex, MoodPage, wheelPoint } from "../components/MoodPage";
 import { isPublicOrigin, lensUrlFor, ShopSimilar } from "../components/ShopSimilar";
@@ -53,10 +53,21 @@ describe("color search", () => {
     const { container } = render(<App />);
     fireEvent.change(screen.getByRole("searchbox"), { target: { value: "linen" } });
     fireEvent.change(container.querySelector('input[type="color"]')!, { target: { value: "#d72638" } });
-    await vi.advanceTimersByTimeAsync(350);
+    await act(async () => { await vi.advanceTimersByTimeAsync(350); });
     expect(await screen.findByRole("heading", { name: "Color #d72638 + “linen”" })).toBeInTheDocument();
     expect(await screen.findByRole("img", { name: "Photo of shirt" })).toBeInTheDocument();
-    expect(calls.filter((c) => c.startsWith("/api/search/color"))).toEqual(["/api/search/color?hex=%23d72638&k=50&q=linen"]);
+    expect(calls.filter((c) => c.startsWith("/api/search/color"))).toEqual(["/api/search/color?hex=%23d72638&k=50&q=linen&audience=all"]);
+  });
+
+  it("cancels pending color search when returning home", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    const calls = routes({ "/api/items?": { items: [], total: 0 } });
+    const { container } = render(<App />);
+    fireEvent.change(container.querySelector('input[type="color"]')!, { target: { value: "#d72638" } });
+    fireEvent.click(screen.getByRole("link", { name: "MoodBoards home" }));
+    await act(async () => { await vi.advanceTimersByTimeAsync(350); });
+    expect(calls.some((c) => c.startsWith("/api/search/color"))).toBe(false);
+    expect(screen.getByRole("heading", { name: "Discover" })).toBeInTheDocument();
   });
 });
 
@@ -72,6 +83,36 @@ describe("MoodPage", () => {
     expect(await screen.findByRole("img", { name: "Photo of dress" })).toBeInTheDocument();
     expect(calls.some((c) => c.startsWith("/api/mood?hex=%23") && c.includes("style=minimalist"))).toBe(true);
     expect(screen.getByRole("slider", { name: /Color wheel/ })).toBeInTheDocument();
+  });
+
+  it("keeps the latest aesthetic when an earlier request finishes late", async () => {
+    let finishOld!: (response: Response) => void;
+    const old = new Promise<Response>((resolve) => { finishOld = resolve; });
+    const fetchMock = vi.fn(async (url: string) => {
+      if (url.startsWith("/api/styles")) return new Response(JSON.stringify(["minimalist", "streetwear"]));
+      if (url.includes("/mood?") && url.includes("style=minimalist")) return old;
+      if (url.includes("/mood?")) return new Response(JSON.stringify({ results: [match("latest", "Dress")] }));
+      return new Response("{}", { status: 404 });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    render(<MoodPage onOpen={() => {}} />);
+    fireEvent.click(await screen.findByRole("radio", { name: "minimalist" }));
+    await waitFor(() => expect(fetchMock.mock.calls.some(([u]) => u.includes("style=minimalist"))).toBe(true));
+    fireEvent.click(screen.getByRole("radio", { name: "streetwear" }));
+    expect(await screen.findByRole("img", { name: "Photo of dress" })).toBeInTheDocument();
+    await act(async () => { finishOld(new Response(JSON.stringify({ results: [match("old", "Shoes")] }))); });
+    expect(screen.queryByRole("img", { name: "Photo of shoes" })).not.toBeInTheDocument();
+    expect(screen.getByRole("img", { name: "Photo of dress" })).toBeInTheDocument();
+  });
+
+  it("puts color at the left end of the balance slider", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    const calls = routes({ "/api/styles": ["minimalist"], "/api/mood": { results: [] } });
+    render(<MoodPage onOpen={() => {}} />);
+    fireEvent.click(await screen.findByRole("radio", { name: "minimalist" }));
+    fireEvent.change(screen.getByRole("slider", { name: "Balance between color and style" }), { target: { value: "0" } });
+    await act(async () => { await vi.advanceTimersByTimeAsync(300); });
+    expect(calls.some((c) => c.includes("color_weight=1"))).toBe(true);
   });
 });
 

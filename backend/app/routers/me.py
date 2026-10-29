@@ -9,12 +9,12 @@ import secrets
 import sqlite3
 from typing import Annotated, Literal
 
-from fastapi import APIRouter, Cookie, Depends, HTTPException, Query, Response
+from fastapi import APIRouter, Cookie, Depends, HTTPException, Query, Request, Response
 from pydantic import BaseModel, Field, field_validator
 
 from app.config import get_settings
 from app.db import get_db
-from app.deps import FocusFilter, get_catalog, get_embedder, get_focus
+from app.deps import CatalogFilters, FocusFilter, get_catalog, get_embedder, get_filters, get_focus
 from app.models import Item
 from app.services.catalog import Catalog
 from app.services.color_search import color_index
@@ -148,26 +148,34 @@ def sign_out(response: Response) -> Response:
 
 @router.get("/for-you", response_model=ForYou)
 def for_you_feed(
+    request: Request,
     user: UserDep,
     focus: Annotated[FocusFilter, Depends(get_focus)],
+    filters: Annotated[CatalogFilters, Depends(get_filters)],
     catalog: Annotated[Catalog, Depends(get_catalog)],
     embedder: Annotated[Embedder, Depends(get_embedder)],
     offset: Annotated[int, Query(ge=0)] = 0,
     limit: Annotated[int, Query(ge=1, le=100)] = 50,
+    style: str | None = None,
 ) -> ForYou:
     """The catalog ranked by your quiz answers (aesthetics + eras via CLIP text, colors via CIEDE2000)."""
     prefs = Prefs(**_me(user).prefs.model_dump()) if user else Prefs([], [], [])
-    if focus.focus != "all":  # the header's "Show" control overrides the quiz answer for this request
+    if style is not None:
+        if style not in STYLE_WORDS:
+            raise HTTPException(status_code=422, detail=f"Unknown style. Choose from: {', '.join(STYLE_WORDS)}")
+        prefs.aesthetics = [style]
+    if "focus" in request.query_params:  # an explicit "all" also overrides the saved quiz answer
         prefs.focus = focus.focus
-    allowed = boost = None
+    allowed, boost = filters.mask.copy(), None
     if prefs.focus != "all":
         index = getattr(catalog, "_focus_index", None) or FocusIndex(catalog, embedder)
         catalog._focus_index = index  # type: ignore[attr-defined]
-        allowed = index.allowed(prefs.focus)  # type: ignore[arg-type]
+        allowed &= index.allowed(prefs.focus)  # type: ignore[arg-type]
         boost = index.boost(prefs.focus)  # type: ignore[arg-type]
     if prefs.is_empty:
         return ForYou(personalized=False, items=[])
-    hits = for_you(catalog, color_index(catalog), embedder, prefs, k=limit, offset=offset, allowed=allowed, focus_boost=boost)
+    kids = filters.kids if "audience" in request.query_params else False
+    hits = for_you(catalog, color_index(catalog), embedder, prefs, k=limit, offset=offset, allowed=allowed, focus_boost=boost, kids=kids)
     return ForYou(
         personalized=True,
         items=[

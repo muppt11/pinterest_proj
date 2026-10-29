@@ -32,3 +32,18 @@ def test_save_and_load_round_trip(catalog: Catalog, tmp_path: Path) -> None:
 def test_mismatched_index_and_metadata_is_rejected() -> None:
     with pytest.raises(ValueError):
         Catalog.from_vectors(VECTORS, ITEMS[:2])
+
+
+def test_zero_results_requested_with_bias(catalog: Catalog) -> None:
+    assert catalog.search(VECTORS[0], k=0, bias=np.zeros(4)) == []
+
+
+@pytest.mark.parametrize("field,value", [("category", "Pants"), ("kids", True)])
+def test_repost_representative_must_respect_filters(field: str, value: object) -> None:
+    items = [dict(ITEMS[0]), dict(ITEMS[1])]
+    for i, item in enumerate(items):
+        item.update(phash="0000000000000000", ingested_at="2026-01-01", exif_datetime_original=f"202{i}-01-01")
+    items[1][field] = value
+    catalog = Catalog.from_vectors(VECTORS[:2], items)
+    hits = catalog.search(VECTORS[1], **{field: value})
+    assert [h.item["id"] for h in hits] == ["tshirt-pink"]

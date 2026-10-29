@@ -1,5 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState, type FormEvent } from "react";
+import { createPortal } from "react-dom";
 import { boardsApi, type Board, type Item } from "../api/client";
+import { usePopoverPosition } from "../usePopoverPosition";
 import "./SaveMenu.css";
 
 interface Props {
@@ -26,8 +28,8 @@ export function SaveMenu({ item, anchor, boards, onCreateBoard, onApply, onClose
   const [initial, setInitial] = useState<Set<number>>(new Set());
   const [checked, setChecked] = useState<Set<number>>(new Set());
   const [newName, setNewName] = useState("");
-  const [position, setPosition] = useState({ top: 0, left: 0 });
   const panel = useRef<HTMLDivElement>(null);
+  const position = usePopoverPosition(true, anchor, panel, { margin: 16 });
 
   useEffect(() => {
     boardsApi
@@ -40,12 +42,6 @@ export function SaveMenu({ item, anchor, boards, onCreateBoard, onApply, onClose
   }, [item.id]);
 
   useLayoutEffect(() => {
-    const r = anchor.getBoundingClientRect();
-    const width = Math.min(320, window.innerWidth - 32);
-    setPosition({
-      top: Math.min(r.bottom + 8, window.innerHeight - 120),
-      left: Math.max(16, Math.min(r.left, window.innerWidth - width - 16)),
-    });
     panel.current?.querySelector<HTMLElement>("input")?.focus();
   }, [anchor]);
 
@@ -82,14 +78,14 @@ export function SaveMenu({ item, anchor, boards, onCreateBoard, onApply, onClose
   const add = [...checked].filter((id) => !initial.has(id));
   const remove = [...initial].filter((id) => !checked.has(id));
 
-  return (
+  return createPortal(
     <div
       ref={panel}
       className="mb-savemenu"
       role="dialog"
       aria-modal="false"
       aria-label="Save to boards"
-      style={{ top: position.top, left: position.left }}
+      style={position}
     >
       <p className="mb-savemenu-title">Save to boards</p>
       {boards.length === 0 ? (
@@ -97,7 +93,7 @@ export function SaveMenu({ item, anchor, boards, onCreateBoard, onApply, onClose
       ) : (
         <ul className="mb-savemenu-list">
           {boards.map((b) => (
-            <li key={b.id} style={{ paddingLeft: depthOf(boards, b) * 16 }}>
+            <li key={b.id} style={{ paddingLeft: Math.min(depthOf(boards, b), 4) * 12 }}>
               <label>
                 <input type="checkbox" checked={checked.has(b.id)} onChange={() => toggle(b.id)} />
                 {b.cover ? <img src={`/api${b.cover.image_url}`} alt="" /> : <span className="mb-savemenu-blank" />}
@@ -124,6 +120,7 @@ export function SaveMenu({ item, anchor, boards, onCreateBoard, onApply, onClose
       >
         {add.length > 0 ? `Save to ${add.length} board${add.length > 1 ? "s" : ""}` : remove.length > 0 ? "Update" : "Save"}
       </button>
-    </div>
+    </div>,
+    document.body,
   );
 }

@@ -14,7 +14,8 @@ import logging
 from collections.abc import AsyncIterator
 from typing import Annotated, Any
 
-from fastapi import APIRouter, Depends
+import numpy as np
+from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
 from langchain_core.language_models import BaseChatModel
 from langchain_core.messages import AIMessage, AIMessageChunk, BaseMessage, HumanMessage, ToolMessage
@@ -23,7 +24,7 @@ from pydantic import BaseModel, Field
 from app.agent.graph import build_graph, recursion_limit
 from app.agent.tools import BoardSummary, TurnLedger, build_tools
 from app.agent.validate import validate_answer
-from app.deps import get_catalog, get_describer, get_embedder, get_llm
+from app.deps import FocusFilter, get_catalog, get_describer, get_embedder, get_focus, get_llm
 from app.models import Item
 from app.services.catalog import Catalog
 from app.services.embedder import Embedder
@@ -68,10 +69,10 @@ def _context_note(req: ChatRequest, catalog: Catalog) -> str:
     return ("\nContext:\n- " + "\n- ".join(lines)) if lines else ""
 
 
-async def _run(req: ChatRequest, catalog: Catalog, embedder: Embedder, llm: BaseChatModel, describer) -> AsyncIterator[str]:  # type: ignore[no-untyped-def]
+async def _run(req: ChatRequest, catalog: Catalog, embedder: Embedder, llm: BaseChatModel, describer, focus: FocusFilter) -> AsyncIterator[str]:  # type: ignore[no-untyped-def]
     ledger = TurnLedger()
     board = BoardSummary([a.model_dump() for a in req.board]) if req.board else None
-    tools = build_tools(catalog, embedder, ledger, board, describer)
+    tools = build_tools(catalog, embedder, ledger, board, describer, exclude_ids=focus.excluded, bias=focus.bias)
     graph = build_graph(llm, tools, catalog.categories, _context_note(req, catalog))
 
     messages: list[BaseMessage] = [
@@ -165,10 +166,16 @@ async def chat(
     embedder: Annotated[Embedder, Depends(get_embedder)],
     llm: Annotated[BaseChatModel, Depends(get_llm)],
     describer: Annotated[object, Depends(get_describer)],
+    focus: Annotated[FocusFilter, Depends(get_focus)],
 ) -> StreamingResponse:
     """One assistant turn, streamed as SSE. Every product in the final answer comes from a tool call this turn."""
+    for aesthetic in req.board or []:
+        centroid = np.asarray(aesthetic.centroid, dtype=np.float32)
+        norm = np.linalg.norm(centroid)
+        if centroid.shape != (catalog.index.d,) or not np.isfinite(centroid).all() or not np.isfinite(norm) or norm == 0:
+            raise HTTPException(status_code=422, detail=f"Board centroids must be finite, non-zero vectors of length {catalog.index.d}.")
     return StreamingResponse(
-        _run(req, catalog, embedder, llm, describer),
+        _run(req, catalog, embedder, llm, describer, focus),
         media_type="text/event-stream",
         headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
     )

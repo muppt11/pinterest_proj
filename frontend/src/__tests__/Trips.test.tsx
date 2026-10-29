@@ -1,7 +1,8 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { JoinPage } from "../components/JoinPage";
 import { PublicTripPage } from "../components/PublicTripPage";
 import { TripPage } from "../components/TripPage";
+import { TripsPage } from "../components/TripsPage";
 
 const item = { id: "i1", category: "Outwear", image_url: "/images/i1.jpg", kids: false, width: 4, height: 5 };
 const weather = {
@@ -69,6 +70,27 @@ describe("TripPage", () => {
     fireEvent.click(await screen.findByRole("button", { name: /beach dinner/ }));
     expect(await screen.findByRole("button", { name: "Like this outwear" })).toBeDisabled();
     expect(screen.queryByRole("button", { name: "Draft with AI" })).not.toBeInTheDocument();
+  });
+});
+
+describe("destination search", () => {
+  it("discards old city results after the destination changes", async () => {
+    let finishOld!: (response: Response) => void;
+    const old = new Promise<Response>((resolve) => { finishOld = resolve; });
+    const fetchMock = vi.fn(async (url: string) => {
+      if (url.includes("/geocode?q=Lis")) return old;
+      if (url.includes("/geocode?q=Par")) return new Response(JSON.stringify([{ name: "Paris", country: "France", latitude: 48.8, longitude: 2.3 }]));
+      return new Response("[]");
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    render(<TripsPage signedIn onNavigate={() => {}} />);
+    fireEvent.change(screen.getByLabelText("Destination"), { target: { value: "Lis" } });
+    await waitFor(() => expect(fetchMock.mock.calls.some(([u]) => u.includes("q=Lis"))).toBe(true));
+    fireEvent.change(screen.getByLabelText("Destination"), { target: { value: "Par" } });
+    expect(await screen.findByRole("button", { name: "Paris, France" })).toBeInTheDocument();
+    await act(async () => { finishOld(new Response(JSON.stringify([{ name: "Lisbon", country: "Portugal", latitude: 38.7, longitude: -9.1 }]))); });
+    expect(screen.queryByRole("button", { name: "Lisbon, Portugal" })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Paris, France" })).toBeInTheDocument();
   });
 });
 

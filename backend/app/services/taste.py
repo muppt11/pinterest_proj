@@ -54,8 +54,9 @@ def for_you(
     offset: int = 0,
     allowed: np.ndarray | None = None,
     focus_boost: np.ndarray | None = None,
+    kids: bool | None = False,
 ) -> list[TasteHit]:
-    """Catalog ranked by the user's quiz answers. Kids' items are excluded."""
+    """Catalog ranked by the user's quiz answers; defaults to adult clothing."""
     n = catalog.index.ntotal
     text_score = color_score = None
     parts: list[tuple[float, np.ndarray]] = []
@@ -80,7 +81,7 @@ def for_you(
     combined = sum(w * s for w, s in parts) if parts else np.zeros(n)
     if focus_boost is not None:
         combined = combined + 0.2 * focus_boost  # lean toward the chosen style focus
-    mask = np.array([not item["kids"] for item in catalog.items])
+    mask = np.array([kids is None or item["kids"] == kids for item in catalog.items], dtype=bool)
     if allowed is not None:
         mask &= allowed
     if prefs.colors:
@@ -89,11 +90,10 @@ def for_you(
         in_family = items_in_families(catalog.items, prefs.colors)
         if (mask & in_family).sum() >= MIN_FAMILY_ITEMS:
             mask &= in_family
-    combined = np.where(mask, combined, -1.0)
     if style is not None:
-        ranked = diversified_order(combined, style.phrase_of, eligible=combined >= 0, pool=max(400, (offset + k) * 3))
+        ranked = diversified_order(combined, style.phrase_of, eligible=mask, pool=None)
     else:
-        ranked = [int(r) for r in np.argsort(-combined, kind="stable")[: (offset + k) * 3]]
+        ranked = [int(r) for r in np.argsort(-combined, kind="stable") if mask[r]]
     order = catalog.reposts.dedupe_rows(ranked, [i["id"] for i in catalog.items])[offset : offset + k]
     return [
         TasteHit(
@@ -104,7 +104,6 @@ def for_you(
             None if style is None else style.phrases[int(style.phrase_of[r])],
         )
         for r in order
-        if combined[r] >= 0
     ]
 
 

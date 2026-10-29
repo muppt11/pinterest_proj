@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { api, type BoardAnalysis, type BoardContext, type Item } from "../api/client";
 import { FeatureTip } from "./FeatureTip";
 import { ItemGrid } from "./ItemGrid";
@@ -14,7 +14,7 @@ const ACCEPT = ["image/jpeg", "image/png", "image/webp"];
 interface BoardAnalyzerProps {
   onOpen: (item: Item, board: BoardContext) => void;
   /** Reports each new analysis so the assistant can use it as context. */
-  onAnalyzed?: (analysis: BoardAnalysis) => void;
+  onAnalyzed?: (analysis: BoardAnalysis | null) => void;
 }
 
 export function BoardAnalyzer({ onOpen, onAnalyzed }: BoardAnalyzerProps) {
@@ -23,6 +23,15 @@ export function BoardAnalyzer({ onOpen, onAnalyzed }: BoardAnalyzerProps) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [dragging, setDragging] = useState(false);
+  const version = useRef(0);
+  useEffect(() => () => { version.current += 1; }, []);
+
+  function invalidate() {
+    version.current += 1;
+    setAnalysis(null);
+    setBusy(false);
+    onAnalyzed?.(null);
+  }
 
   const previews = useMemo(() => files.map((f) => URL.createObjectURL(f)), [files]);
   useEffect(() => () => previews.forEach((url) => URL.revokeObjectURL(url)), [previews]);
@@ -32,26 +41,28 @@ export function BoardAnalyzer({ onOpen, onAnalyzed }: BoardAnalyzerProps) {
     const accepted = Array.from(list).filter((f) => ACCEPT.includes(f.type));
     const skipped = list.length - accepted.length;
     setFiles((prev) => [...prev, ...accepted].slice(0, MAX_IMAGES));
-    setAnalysis(null);
+    invalidate();
     setError(skipped > 0 ? `Skipped ${skipped} file(s): only JPEG, PNG, and WebP are supported.` : null);
   }
 
   function remove(index: number) {
     setFiles((prev) => prev.filter((_, i) => i !== index));
-    setAnalysis(null);
+    invalidate();
   }
 
   async function analyze() {
+    const requestVersion = ++version.current;
     setBusy(true);
     setError(null);
     try {
       const result = await api.analyzeBoard(files);
+      if (requestVersion !== version.current) return;
       setAnalysis(result);
       onAnalyzed?.(result);
     } catch (e) {
-      setError((e as Error).message);
+      if (requestVersion === version.current) setError((e as Error).message);
     } finally {
-      setBusy(false);
+      if (requestVersion === version.current) setBusy(false);
     }
   }
 

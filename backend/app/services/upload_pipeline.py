@@ -8,7 +8,7 @@
 import io
 from dataclasses import dataclass
 
-from PIL import Image
+from PIL import Image, ImageOps
 
 from app.services.provenance import Provenance, assess
 from app.services.reposts import exif_datetime_original
@@ -30,11 +30,13 @@ def process_upload(data: bytes, mime: str) -> ProcessedUpload:
     original = Image.open(io.BytesIO(data))
     taken = exif_datetime_original(original)
 
-    exif = original.getexif()  # 2. strip location, keep the capture date
+    # Apply the camera's display rotation before embedding or saving, and remove the now-applied tag.
+    upright = ImageOps.exif_transpose(original)
+    exif = upright.getexif()  # 2. strip location, keep the capture date
     had_gps = GPS_IFD in exif and bool(exif.get_ifd(GPS_IFD))
     if GPS_IFD in exif:
         del exif[GPS_IFD]
-    rgb = original.convert("RGB")
+    rgb = upright.convert("RGB")
     out = io.BytesIO()
     rgb.save(out, format="JPEG", quality=92, exif=exif.tobytes())
     return ProcessedUpload(rgb, out.getvalue(), provenance, taken, had_gps)

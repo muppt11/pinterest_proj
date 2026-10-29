@@ -331,7 +331,7 @@ def eval_labels() -> list[str]:
     from app.services.provenance import assess
 
     handset = REPO / "evals" / "labels_handset"
-    expected_by_folder = {"ai": "ai_generated", "human": "human_verified", "other": "unknown"}
+    expected_by_folder = {"ai": "ai_generated", "human": "unknown", "verified": "human_verified", "other": "unknown"}
     real = [(p, expected_by_folder[p.parent.name]) for p in handset.glob("*/*") if p.parent.name in expected_by_folder and p.suffix.lower() in {".jpg", ".jpeg", ".png", ".webp", ".heic"}]
     lines = ["## 7. AI labels", ""]
     if real:
@@ -367,6 +367,17 @@ def _tamper(data: bytes) -> bytes:
 # --- 8. Assistant ------------------------------------------------------------------------------
 
 
+def context_ids(by_category: dict[str, list[str]], categories: list[str], rng: random.Random) -> list[str]:
+    """Pick distinct real items, including when a comparison repeats the same category."""
+    selected: list[str] = []
+    for category in categories:
+        available = [item_id for item_id in by_category.get(category, []) if item_id not in selected]
+        if not available:
+            raise ValueError(f"not enough distinct items in category {category}")
+        selected.append(rng.choice(available))
+    return selected
+
+
 def eval_agent(catalog) -> list[str]:  # type: ignore[no-untyped-def]
     import urllib.request
 
@@ -394,7 +405,12 @@ def eval_agent(catalog) -> list[str]:  # type: ignore[no-untyped-def]
         by_cat[i["category"]].append(i["id"])
     rows, passes = [], 0
     for case in prompts:
-        context = [RNG.choice(by_cat[c]) for c in case.get("context_items", [])] or ([RNG.choice(by_cat[case["context_item"]])] if case.get("context_item") else [])
+        categories = case.get("context_items") or ([case["context_item"]] if case.get("context_item") else [])
+        try:
+            context = context_ids(by_cat, categories, RNG)
+        except ValueError as exc:
+            rows.append(f"| {case['prompt']} | invalid fixture: {exc} | – | – | – | ❌ |")
+            continue
         t = time.time()
         body = client.post("/assistant/chat", json={"message": case["prompt"], "context_item_ids": context}).text
         events = [(blk.split("\n")[0][7:], json.loads(blk.split("\n", 1)[1][6:])) for blk in body.strip().split("\n\n") if blk.startswith("event:")]

@@ -94,6 +94,8 @@ class Catalog:
         With filters we score the whole catalog: at ~5k vectors an exact scan is ~1 ms,
         so there's no need for a pre-filtered index.
         """
+        if k <= 0 or self.index.ntotal == 0:
+            return []
         exclude_ids = exclude_ids or set()
         allowed = set(categories) if categories is not None else None
         if category is not None:
@@ -125,7 +127,12 @@ class Catalog:
                     continue
                 seen_groups.add(group)
                 rep = self.get(self.reposts.representative(item["id"]))
-                if rep is not None and rep["id"] not in exclude_ids:
+                if (
+                    rep is not None
+                    and rep["id"] not in exclude_ids
+                    and (allowed is None or rep["category"] in allowed)
+                    and (kids is None or rep["kids"] == kids)
+                ):
                     item = rep
             hits.append(Hit(item=item, score=float(score)))
             if len(hits) == k:

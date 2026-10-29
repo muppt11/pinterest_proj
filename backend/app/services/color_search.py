@@ -115,11 +115,10 @@ def color_search(
         mask &= allowed
     if kids is not None:
         mask &= np.array([item["kids"] == kids for item in catalog.items])
-    combined = np.where(mask, combined, -1)
     if style is not None:
-        ranked = diversified_order(combined, style.phrase_of, eligible=combined >= 0)[: k * 3]
+        ranked = diversified_order(combined, style.phrase_of, eligible=mask, pool=None)
     else:
-        ranked = [int(r) for r in np.argsort(-combined, kind="stable")[: k * 3]]
+        ranked = [int(r) for r in np.argsort(-combined, kind="stable") if mask[r]]
     order = catalog.reposts.dedupe_rows(ranked, [i["id"] for i in catalog.items])[:k]
     return [
         ColorHit(
@@ -132,5 +131,4 @@ def color_search(
             phrase=None if style is None else style.phrases[int(style.phrase_of[r])],
         )
         for r in order
-        if combined[r] >= 0
     ]

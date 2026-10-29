@@ -1,5 +1,5 @@
 /** Typed client for the MoodBoards API. In dev, Vite proxies /api to FastAPI on :8000. */
-import { categoryLabel } from "../categories";
+import { categoryLabel, filterQuery, type CatalogFilters } from "../categories";
 import { getFocus } from "../focus";
 
 const BASE = "/api";
@@ -115,7 +115,8 @@ export const profileApi = {
     request<Me>("/me/prefs", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(prefs) }),
   signOut: () => fetch(`${BASE}/me`, { method: "DELETE" }),
   quiz: () => request<QuizOptions>("/quiz"),
-  forYou: (offset = 0, limit = 50) => request<{ personalized: boolean; items: ForYouItem[] }>(`/for-you?offset=${offset}&limit=${limit}`),
+  forYou: (offset = 0, limit = 50, filters: Partial<CatalogFilters> = {}) =>
+    request<{ personalized: boolean; items: ForYouItem[] }>(`/for-you?offset=${offset}&limit=${limit}&focus=${getFocus()}${filterQuery(filters)}${filters.style ? `&style=${encodeURIComponent(filters.style)}` : ""}`),
 };
 
 export interface ShopLinks {
@@ -190,7 +191,7 @@ export class ApiError extends Error {
 /** Adds the viewer's style focus to a URL (endpoints that don't filter simply ignore it). */
 export function withFocus(path: string): string {
   const focus = getFocus();
-  if (focus === "all") return path;
+  if (focus === "all" || /[?&]focus=/.test(path)) return path;
   return `${path}${path.includes("?") ? "&" : "?"}focus=${focus}`;
 }
 
@@ -260,7 +261,7 @@ export interface AssistantRequest {
 }
 
 export async function startAssistantChat(body: AssistantRequest, signal?: AbortSignal): Promise<Response> {
-  const response = await fetch(`${BASE}/assistant/chat`, {
+  const response = await fetch(`${BASE}${withFocus("/assistant/chat")}`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
@@ -275,28 +276,33 @@ export const imageSrc = (item: Item) => `${BASE}${item.image_url}`;
 export const altText = (item: Item) => `Photo of ${item.kids ? "kids' " : ""}${categoryLabel(item.category).toLowerCase()}`;
 
 export const api = {
-  listItems: (offset = 0, limit = 50, filters: { group?: string | null; style?: string | null } = {}) =>
+  filterOptions: (filters: Partial<CatalogFilters> = {}) =>
+    request<{ categories: { value: string; label: string; group: string | null; count: number }[]; total: number }>(
+      `/filters?${filterQuery({ audience: filters.audience, colorFamily: filters.colorFamily }).slice(1)}`,
+    ),
+  listItems: (offset = 0, limit = 50, filters: Partial<CatalogFilters> = {}) =>
     request<ItemPage>(
-      `/items?offset=${offset}&limit=${limit}${filters.group ? `&group=${filters.group}` : ""}${filters.style ? `&style=${encodeURIComponent(filters.style)}` : ""}`,
+      `/items?offset=${offset}&limit=${limit}${filterQuery(filters)}${filters.style ? `&style=${encodeURIComponent(filters.style)}` : ""}`,
     ),
   getItem: (id: string) => request<Item>(`/items/${encodeURIComponent(id)}`),
-  similar: (id: string, k = 30) => request<SearchResults>(`/items/${encodeURIComponent(id)}/similar?k=${k}`),
-  searchText: (q: string, k = 50, group?: string | null) =>
-    request<SearchResults>(`/search/text?q=${encodeURIComponent(q)}&k=${k}${group ? `&group=${group}` : ""}`),
+  similar: (id: string, k = 30, sameCategory = true) =>
+    request<SearchResults>(`/items/${encodeURIComponent(id)}/similar?k=${k}&same_category=${sameCategory}`),
+  searchText: (q: string, k = 50, filters: Partial<CatalogFilters> = {}) =>
+    request<SearchResults>(`/search/text?q=${encodeURIComponent(q)}&k=${k}${filterQuery(filters)}`),
   assistantStatus: () => request<{ available: boolean; model: string; reason: string | null }>("/assistant/status"),
-  searchImage: (file: File, k = 50) => {
+  searchImage: (file: File, k = 50, filters: Partial<CatalogFilters> = {}) => {
     const body = new FormData();
     body.append("image", file);
-    return request<SearchResults>(`/search/image?k=${k}`, { method: "POST", body });
+    return request<SearchResults>(`/search/image?k=${k}${filterQuery(filters)}`, { method: "POST", body });
   },
-  searchColor: (hex: string, q?: string, k = 50) =>
-    request<ColorResults>(`/search/color?hex=${encodeURIComponent(hex)}&k=${k}${q ? `&q=${encodeURIComponent(q)}` : ""}`),
+  searchColor: (hex: string, q?: string, k = 50, filters: Partial<CatalogFilters> = {}) =>
+    request<ColorResults>(`/search/color?hex=${encodeURIComponent(hex)}&k=${k}${q ? `&q=${encodeURIComponent(q)}` : ""}${filterQuery(filters)}`),
   styles: () => request<string[]>("/styles"),
   characters: () => request<(CharacterInfo & { covers: Item[] })[]>("/characters"),
   characterBoard: (id: string, k = 30) => request<CharacterBoard>(`/characters/${encodeURIComponent(id)}?k=${k}`),
-  mood: (hex: string, style: string, colorWeight = 0.5, k = 40) =>
+  mood: (hex: string, style: string, colorWeight = 0.5, k = 40, filters: Partial<CatalogFilters> = {}) =>
     request<ColorResults>(
-      `/mood?hex=${encodeURIComponent(hex)}&style=${encodeURIComponent(style)}&color_weight=${colorWeight}&k=${k}`,
+      `/mood?hex=${encodeURIComponent(hex)}&style=${encodeURIComponent(style)}&color_weight=${colorWeight}&k=${k}${filterQuery(filters)}`,
     ),
   shopLinks: (itemId: string, detailed = true) =>
     request<ShopLinks>(`/items/${encodeURIComponent(itemId)}/shop-links?detailed=${detailed}`),

@@ -64,6 +64,20 @@ def test_pipeline_strips_gps_but_keeps_capture_date() -> None:
     assert cleaned.get_ifd(0x8769).get(36867) == "2024:07:04 18:30:00"
 
 
+def test_pipeline_applies_phone_rotation_without_rotating_twice() -> None:
+    image = Image.new("RGB", (30, 20), "red")
+    exif = _exif_with_gps_and_date()
+    exif[274] = 6  # display rotated 90 degrees clockwise
+    data = io.BytesIO()
+    image.save(data, format="JPEG", exif=exif)
+    result = process_upload(data.getvalue(), "image/jpeg")
+    assert result.image.size == (20, 30)
+    saved = Image.open(io.BytesIO(result.jpeg))
+    assert saved.size == (20, 30) and saved.getexif().get(274) is None
+    assert result.exif_datetime_original == "2024-07-04T18:30:00" and result.had_gps
+    assert not saved.getexif().get_ifd(GPS_IFD)
+
+
 def test_photo_search_reports_the_upload_label_and_catalog_items_are_unknown(client) -> None:  # type: ignore[no-untyped-def]
     signed = sign_jpeg(jpeg_bytes(), "trainedAlgorithmicMedia")
     body = client.post("/search/image", files={"image": ("ai.jpg", signed, "image/jpeg")}).json()

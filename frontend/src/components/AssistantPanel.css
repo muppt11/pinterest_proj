@@ -7,6 +7,7 @@
   display: flex;
   flex-direction: column;
   width: min(420px, 100vw);
+  overflow-y: auto;
   background: var(--mb-surface);
   color: var(--mb-ink);
   box-shadow: -4px 0 24px rgb(0 0 0 / 0.15);
@@ -32,6 +33,7 @@
 
 .mb-assistant-log {
   flex: 1;
+  min-height: 0;
   overflow-y: auto;
   margin: 0;
   padding: 8px 20px;
@@ -63,6 +65,7 @@
 .mb-msg p {
   margin: 0;
   white-space: pre-wrap;
+  overflow-wrap: anywhere;
 }
 
 .mb-msg-user p {
@@ -101,7 +104,7 @@
 
 .mb-msg-items {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 8px;
   margin: 10px 0 0;
   padding: 0;
@@ -133,6 +136,7 @@
   margin-top: 4px;
   font-size: 0.8rem;
   font-weight: 600;
+  overflow-wrap: anywhere;
 }
 
 .mb-assistant-input {
@@ -145,6 +149,7 @@
 
 .mb-assistant-input textarea {
   flex: 1;
+  min-width: 0;
   resize: none;
   padding: 10px 14px;
   border: 1px solid var(--mb-border);
@@ -160,7 +165,7 @@
 }
 
 .mb-assistant-setup {
-  margin: 4px 20px 8px;
+  margin: 4px 0 8px;
   padding: 14px 16px;
   border-radius: var(--mb-radius-card);
   background: var(--mb-surface-accent);
@@ -178,7 +183,15 @@
   background: var(--mb-surface);
   font-size: 0.82rem;
   white-space: pre-wrap;
+  overflow-wrap: anywhere;
 }
+
+.mb-assistant-head,
+.mb-assistant-note,
+.mb-assistant-input,
+.mb-assistant-input button { flex-shrink: 0; }
+
+.mb-assistant-suggestions button { max-width: 100%; }
 
 .mb-assistant-suggest-label,
 .mb-msg-source {

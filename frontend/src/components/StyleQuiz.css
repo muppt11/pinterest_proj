@@ -32,8 +32,14 @@
   font-weight: 600;
 }
 
+.mb-quiz-name {
+  display: block;
+  width: min(360px, 100%);
+  min-width: 0;
+}
+
 .mb-quiz-name input {
-  width: min(360px, 80vw);
+  width: 100%;
   padding: 14px 18px;
   border: 1px solid var(--mb-border);
   border-radius: var(--mb-radius-card);
@@ -109,6 +115,8 @@
   gap: 8px;
   margin-top: 8px;
 }
+
+.mb-quiz > * { min-width: 0; max-width: 100%; }
 
 .mb-quiz-skipall {
   border: 0;

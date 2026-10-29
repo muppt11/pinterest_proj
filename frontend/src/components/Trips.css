@@ -32,9 +32,12 @@
   display: flex;
   flex-direction: column;
   gap: 16px;
+  min-width: 0;
 }
 
 .mb-trip-card {
+  min-width: 0;
+  overflow-wrap: anywhere;
   padding: 18px 20px;
   border-radius: var(--mb-radius-card);
   background: var(--mb-surface-accent);
@@ -84,6 +87,8 @@
   display: flex;
   flex-direction: column;
   width: 100%;
+  min-width: 0;
+  overflow-wrap: anywhere;
   padding: 16px 20px;
   border: 0;
   border-radius: var(--mb-radius-card);
@@ -121,6 +126,8 @@
 
 .mb-trip-form input,
 .mb-trip-dates input {
+  min-width: 0;
+  max-width: 100%;
   padding: 10px 14px;
   border: 1px solid var(--mb-border);
   border-radius: 12px;
@@ -130,6 +137,8 @@
 }
 
 .mb-trip-form fieldset {
+  min-width: 0;
+  margin: 0;
   border: 1px solid var(--mb-border);
   border-radius: var(--mb-radius-card);
 }
@@ -143,7 +152,7 @@
 
 .mb-trip-dates input:not([type="date"]) {
   flex: 1;
-  min-width: 160px;
+  min-width: min(160px, 100%);
 }
 
 .mb-place-options {
@@ -230,6 +239,9 @@
   gap: 6px;
   font-weight: 600;
 }
+
+.mb-trip-dates > label { min-width: 0; max-width: 100%; }
+.mb-trip-members li { flex-wrap: wrap; }
 
 .mb-trip-palette {
   display: flex;
