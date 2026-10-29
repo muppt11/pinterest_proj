@@ -17,7 +17,22 @@ make setup models index   # once: deps, local models, catalog index
 make dev                  # API on :8000, web app on :5173
 ```
 
-`make test` runs pytest and Vitest. `make help` lists every target.
+`make test` runs pytest and Vitest, `make eval` writes the eval report, and `make help` lists every target.
+
+### Live demo (Hugging Face Spaces)
+
+_Link goes here once deployed._ The Space builds from the `Dockerfile`:
+- It installs CPU-only PyTorch.
+- It downloads the CC0 dataset and the checksum-verified model.
+- It builds the index.
+- It serves the API and the app from one process (`app/serve.py`).
+
+The Ask assistant and AI-drafted notes need a local model, so on the hosted demo they explain that they run locally. Everything else works. To deploy your own copy:
+
+```bash
+hf auth login                             # once, with a Hugging Face write token
+make deploy-hf SPACE=<your-hf-username>/moodboards
+```
 
 ## 2. User research and opportunities
 

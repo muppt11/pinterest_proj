@@ -30,3 +30,6 @@ dist/
 .vscode/
 .idea/
 pinterest-logo-pinterest-transparent-free-png.png.webp
+
+# Build caches
+*.tsbuildinfo

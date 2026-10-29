@@ -1,4 +1,5 @@
 import { useRef, useState, type FormEvent } from "react";
+import { LOGO_URL } from "../logo";
 import { FeatureTip } from "./FeatureTip";
 import { FocusSelect } from "./FocusPicker";
 import { ThemeToggle } from "./ThemeToggle";
@@ -52,7 +53,7 @@ export function Header({ onAsk, displayName, path, onNavigate, onSearchText, onS
           onHome();
         }}
       >
-        <img src="/logo.webp" alt="" width={32} height={32} />
+        <img src={LOGO_URL} alt="" width={32} height={32} />
         <span className="mb-wordmark">MoodBoards</span>
       </a>
       <nav aria-label="Main" className="mb-nav">

@@ -1,0 +1,11 @@
+data/
+**/node_modules/
+**/.venv/
+frontend/dist/
+ui_inspo/
+evals/labels_handset/
+evals/reports/
+.git/
+*.db
+*.webp.webp
+pinterest-logo-pinterest-transparent-free-png.png.webp

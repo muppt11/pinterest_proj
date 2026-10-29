@@ -1,4 +1,4 @@
-.PHONY: help setup models index dev backend frontend test test-backend test-frontend eval
+.PHONY: help setup models index dev backend frontend test test-backend test-frontend eval deploy-hf
 
 help: ## List targets
 	@grep -E '^[a-z-]+:.*##' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  %-14s %s\n", $$1, $$2}'
@@ -35,3 +35,6 @@ test: test-backend test-frontend ## Run all tests
 
 eval: ## Run evals and write a markdown report to evals/reports/ (feature 10)
 	cd backend && uv run python ../evals/run_evals.py
+
+deploy-hf: ## Push to a Hugging Face Space: make deploy-hf SPACE=<user>/<space>
+	scripts/deploy_hf.sh $(SPACE)
